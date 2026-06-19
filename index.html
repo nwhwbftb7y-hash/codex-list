@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3ed" />
+    <title>今天 · Todo List</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="todo-card" aria-labelledby="page-title">
+        <header class="hero">
+          <div>
+            <p class="eyebrow" id="date-label"></p>
+            <h1 id="page-title">今天要做什么？</h1>
+            <p class="subtitle">把脑袋里的小事放下来，一件一件完成。</p>
+          </div>
+          <div class="progress-ring" id="progress-ring" aria-label="完成进度 0%">
+            <span id="progress-value">0%</span>
+          </div>
+        </header>
+
+        <form class="add-form" id="todo-form">
+          <label class="sr-only" for="todo-input">添加新任务</label>
+          <span class="plus" aria-hidden="true">＋</span>
+          <input id="todo-input" type="text" maxlength="100" placeholder="添加一个新任务…" autocomplete="off" />
+          <button type="submit">添加</button>
+        </form>
+
+        <div class="toolbar">
+          <div class="filters" role="tablist" aria-label="任务筛选">
+            <button class="filter active" type="button" data-filter="all">全部</button>
+            <button class="filter" type="button" data-filter="active">进行中</button>
+            <button class="filter" type="button" data-filter="completed">已完成</button>
+          </div>
+          <button class="clear-completed" id="clear-completed" type="button">清除已完成</button>
+        </div>
+
+        <ul class="todo-list" id="todo-list" aria-live="polite"></ul>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <div class="empty-icon">✓</div>
+          <h2>这里很清爽</h2>
+          <p>添加一件想完成的事吧。</p>
+        </div>
+
+        <footer class="footer">
+          <p id="items-left">0 件待完成</p>
+          <p class="tip">点击圆圈完成任务</p>
+        </footer>
+      </section>
+    </main>
+
+    <template id="todo-template">
+      <li class="todo-item">
+        <button class="toggle" type="button" aria-label="标记为已完成">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.2 3.2L15.5 6.8" /></svg>
+        </button>
+        <span class="todo-text"></span>
+        <button class="delete" type="button" aria-label="删除任务">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
+        </button>
+      </li>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
