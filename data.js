@@ -50,12 +50,42 @@
   }
 
   function loadSeries() {
-    return read(SERIES_KEY, []).map((series) => ({
-      ...series,
-      hasDeadline: series.hasDeadline !== undefined ? Boolean(series.hasDeadline) : true,
-      endAt: series.endAt || defaultSeriesEnd(series.startAt),
-      exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
-    }));
+    const raw = read(SERIES_KEY, []);
+    const migratedIds = [];
+    const normalized = raw.map((series) => {
+      if (series.modelVersion === 2) {
+        return {
+          ...series,
+          deadline: series.deadline || null,
+          hasDeadline: Boolean(series.deadline),
+          endAt: series.endAt || defaultSeriesEnd(series.startAt),
+          exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
+        };
+      }
+
+      // 旧版误把 DDL 当作重复周期的起点。迁移后：周期从创建日开始，DDL 固定不变。
+      const hadDeadline = series.hasDeadline !== undefined ? Boolean(series.hasDeadline) : true;
+      const oldStart = series.startAt || series.createdAt || new Date().toISOString();
+      const scheduleStart = series.createdAt || new Date().toISOString();
+      migratedIds.push(series.id);
+      return {
+        ...series,
+        modelVersion: 2,
+        startAt: new Date(scheduleStart).toISOString(),
+        deadline: hadDeadline ? new Date(oldStart).toISOString() : null,
+        hasDeadline: hadDeadline,
+        endAt: series.endAt || defaultSeriesEnd(scheduleStart),
+        exceptions: [],
+      };
+    });
+
+    if (migratedIds.length) {
+      localStorage.setItem(SERIES_KEY, JSON.stringify(normalized));
+      const migratedSet = new Set(migratedIds);
+      const todos = read(TODO_KEY, []).filter((todo) => !migratedSet.has(todo.seriesId) || todo.completed || todo.detached);
+      localStorage.setItem(TODO_KEY, JSON.stringify(todos));
+    }
+    return normalized;
   }
 
   function saveSeries(series) {
@@ -101,7 +131,7 @@
         if (withinEnd && !series.exceptions.includes(key) && !existing.has(`${series.id}|${key}`)) {
           todos.push(normalizeTodo({
             id: uid(), text: series.text, category: series.category,
-            deadline: series.hasDeadline ? key : null,
+            deadline: series.deadline || null,
             scheduledAt: key, createdAt: series.createdAt,
             completed: false, seriesId: series.id, occurrenceKey: key,
           }, todos.length));
@@ -126,11 +156,13 @@
 
   function addSeries(data) {
     const seriesList = loadSeries();
-    const startAt = data.startAt || new Date().toISOString();
+    const startAt = new Date().toISOString();
     seriesList.push({
       id: uid(), text: data.text, category: data.category,
-      startAt: new Date(startAt).toISOString(),
-      hasDeadline: Boolean(data.startAt),
+      modelVersion: 2,
+      startAt,
+      deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+      hasDeadline: Boolean(data.deadline),
       frequency: data.frequency,
       endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(startAt),
       createdAt: new Date().toISOString(), exceptions: [],
@@ -195,7 +227,9 @@
     const seriesList = loadSeries().map((series) => series.id === oldSeries.id ? { ...series, endAt: cutoff } : series);
     const newSeries = {
       ...oldSeries, id: uid(), text: changes.text, category: changes.category,
-      startAt: new Date(changes.deadline || target.occurrenceKey).toISOString(),
+      modelVersion: 2,
+      startAt: new Date(target.occurrenceKey).toISOString(),
+      deadline: changes.deadline ? new Date(changes.deadline).toISOString() : null,
       hasDeadline: Boolean(changes.deadline),
       endAt: remainingEnd, createdAt: new Date().toISOString(), exceptions: [],
     };
@@ -222,6 +256,7 @@
 
   function collapseTodos(items) {
     const standalone = items.filter((todo) => !todo.seriesId);
+    const seriesById = new Map(loadSeries().map((series) => [series.id, series]));
     const groups = new Map();
     items.filter((todo) => todo.seriesId).forEach((todo) => {
       if (!groups.has(todo.seriesId)) groups.set(todo.seriesId, []);
@@ -230,9 +265,25 @@
     const now = Date.now();
     const representatives = [...groups.values()].map((occurrences) => {
       const ordered = occurrences.sort((a, b) => new Date(a.scheduledAt || a.createdAt) - new Date(b.scheduledAt || b.createdAt));
-      const alreadyStarted = ordered.filter((todo) => new Date(todo.scheduledAt || todo.createdAt).getTime() <= now);
-      return alreadyStarted.length ? alreadyStarted[alreadyStarted.length - 1] : ordered[0];
-    });
+      const series = seriesById.get(ordered[0].seriesId);
+      if (!series) return ordered[0];
+      const start = new Date(series.startAt);
+      if (start.getTime() > now) return ordered[0];
+
+      const limit = Math.min(now, new Date(series.endAt).getTime());
+      const anchorDay = start.getDate();
+      let expected = new Date(start);
+      let next = addPeriod(expected, series.frequency, anchorDay);
+      let guard = 0;
+      while (next.getTime() <= limit && guard < 5000) {
+        expected = next;
+        next = addPeriod(expected, series.frequency, anchorDay);
+        guard += 1;
+      }
+      const expectedKey = expected.toISOString();
+      // 当前周期实例若被单独删除，则整组保持隐藏；绝不提前跳到未来实例。
+      return ordered.find((todo) => todo.occurrenceKey === expectedKey) || null;
+    }).filter(Boolean);
     return [...standalone, ...representatives];
   }
 

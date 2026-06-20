@@ -161,12 +161,11 @@ form.addEventListener("submit", (event) => {
   if (!text) return input.focus();
   const category = new FormData(form).get("category");
   if (repeatSelect.value !== "none") {
-    const repeatStart = deadlineInput.value || new Date().toISOString();
-    if (repeatEnd.value && new Date(`${repeatEnd.value}T23:59:59`) < new Date(repeatStart)) {
-      alert("重复结束日期不能早于今天或首次 DDL。");
+    if (repeatEnd.value && new Date(`${repeatEnd.value}T23:59:59`) < new Date()) {
+      alert("重复结束日期不能早于今天。");
       return repeatEnd.focus();
     }
-    TodoStore.addSeries({ text, category, startAt: deadlineInput.value || null, frequency: repeatSelect.value, endAt: repeatEnd.value });
+    TodoStore.addSeries({ text, category, deadline: deadlineInput.value || null, frequency: repeatSelect.value, endAt: repeatEnd.value });
   } else {
     TodoStore.addTodo({ text, category, deadline: deadlineInput.value || null });
   }

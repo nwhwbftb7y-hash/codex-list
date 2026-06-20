@@ -49,7 +49,7 @@ function renderSeries() {
       <div class="series-actions"><button type="button" data-action="edit">编辑</button><button class="danger-text" type="button" data-action="delete">删除整组</button></div>`;
     card.querySelector("h3").textContent = series.text;
     card.querySelector(".series-rule").textContent = `${frequencies[series.frequency]} · ${categories[series.category].label}${series.endAt ? ` · 至 ${formatDate(series.endAt, false)}` : " · 持续重复"}`;
-    card.querySelector(".series-start").textContent = `首次：${formatDate(series.startAt)}`;
+    card.querySelector(".series-start").textContent = series.deadline ? `固定 DDL：${formatDate(series.deadline)}` : "固定 DDL：未设置";
     card.querySelector('[data-action="edit"]').addEventListener("click", () => openSeriesEditor(series.id));
     card.querySelector('[data-action="delete"]').addEventListener("click", () => {
       if (confirm(`确定删除“${series.text}”及其全部重复日程吗？`)) { TodoStore.deleteSeries(series.id); renderSeries(); }
@@ -64,7 +64,7 @@ function openSeriesEditor(id) {
   editingSeriesId = id;
   document.querySelector("#series-text").value = series.text;
   document.querySelector("#series-category").value = series.category;
-  document.querySelector("#series-start").value = localInput(series.startAt);
+  document.querySelector("#series-start").value = series.deadline ? localInput(series.deadline) : "";
   document.querySelector("#series-frequency").value = series.frequency;
   document.querySelector("#series-end").value = dateInput(series.endAt);
   seriesDialog.showModal();
@@ -150,22 +150,19 @@ document.querySelector("#apply-range").addEventListener("click", renderSummary);
 document.querySelector("#export-summary").addEventListener("click", exportSummary);
 document.querySelector("#save-series").addEventListener("click", () => {
   const text = document.querySelector("#series-text").value.trim();
-  const startAt = document.querySelector("#series-start").value;
-  if (!text || !startAt) return;
+  const deadline = document.querySelector("#series-start").value;
+  if (!text) return;
   const endValue = document.querySelector("#series-end").value;
-  if (endValue && new Date(`${endValue}T23:59:59`) < new Date(startAt)) {
-    alert("结束日期不能早于首次时间。");
+  if (endValue && new Date(`${endValue}T23:59:59`) < new Date()) {
+    alert("结束日期不能早于今天。");
     return;
   }
   TodoStore.updateSeries(editingSeriesId, {
     text, category: document.querySelector("#series-category").value,
-    startAt, frequency: document.querySelector("#series-frequency").value,
-    endAt: endValue ? new Date(`${endValue}T23:59:59`).toISOString() : (() => {
-      const end = new Date(startAt);
-      end.setFullYear(end.getFullYear() + 10);
-      end.setHours(23, 59, 59, 999);
-      return end.toISOString();
-    })(),
+    deadline: deadline ? new Date(deadline).toISOString() : null,
+    hasDeadline: Boolean(deadline),
+    frequency: document.querySelector("#series-frequency").value,
+    endAt: endValue ? new Date(`${endValue}T23:59:59`).toISOString() : null,
   });
   seriesDialog.close();
   renderSeries();
