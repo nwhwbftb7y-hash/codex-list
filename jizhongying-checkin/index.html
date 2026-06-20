@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171915" />
+    <meta name="description" content="集中营打卡——练过，记下，彼此看见。" />
+    <title>集中营打卡</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="集中营打卡首页">
+          <span class="brand-mark" aria-hidden="true">集</span>
+          <span>集中营打卡</span>
+        </a>
+        <p class="today" id="today"></p>
+      </header>
+
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="kicker"><span></span> 今日训练公示栏</p>
+          <h1 id="page-title">练过，记下。<br /><em>彼此看见。</em></h1>
+          <p class="intro">不欠动作，不欠自己。完成今天的训练后，留下一笔。</p>
+        </div>
+
+        <form class="checkin-form" id="checkin-form">
+          <div class="form-heading">
+            <div>
+              <p class="form-index">01 / CHECK IN</p>
+              <h2>今天练了吗？</h2>
+            </div>
+            <span class="stamp" aria-hidden="true">练</span>
+          </div>
+
+          <label for="name">姓名</label>
+          <input id="name" name="name" type="text" maxlength="30" autocomplete="name" placeholder="留下你的名字" required />
+
+          <label for="note">训练心得</label>
+          <textarea id="note" name="note" maxlength="200" rows="3">已练不欠</textarea>
+
+          <button class="submit-button" type="submit">
+            <span>完成打卡</span><span aria-hidden="true">↗</span>
+          </button>
+          <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="board" aria-labelledby="board-title">
+        <div class="board-heading">
+          <div>
+            <p class="section-index">02 / ROLL CALL</p>
+            <h2 id="board-title">训练名册</h2>
+          </div>
+          <div class="counter"><strong id="checkin-count">0</strong><span>次打卡</span></div>
+        </div>
+
+        <div class="status-row">
+          <p><span class="live-dot"></span> 实时共享记录</p>
+          <button id="refresh-button" type="button">刷新记录</button>
+        </div>
+        <div class="checkin-list" id="checkin-list" aria-live="polite" aria-busy="true"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <span>00</span>
+          <h3>今天还没人报到</h3>
+          <p>做第一个完成训练的人。</p>
+        </div>
+      </section>
+
+      <footer><span>集中营打卡</span><span>自律不是口号，是留下的每一条记录。</span></footer>
+    </main>
+
+    <template id="checkin-template">
+      <article class="checkin-card">
+        <div class="avatar" aria-hidden="true"></div>
+        <div class="checkin-content">
+          <div class="checkin-meta"><h3></h3><time></time></div>
+          <p></p>
+        </div>
+        <span class="done-mark">DONE</span>
+      </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

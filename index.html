@@ -22,10 +22,31 @@
         </header>
 
         <form class="add-form" id="todo-form">
-          <label class="sr-only" for="todo-input">添加新任务</label>
-          <span class="plus" aria-hidden="true">＋</span>
-          <input id="todo-input" type="text" maxlength="100" placeholder="添加一个新任务…" autocomplete="off" />
-          <button type="submit">添加</button>
+          <div class="add-row">
+            <label class="sr-only" for="todo-input">添加新任务</label>
+            <span class="plus" aria-hidden="true">＋</span>
+            <input id="todo-input" type="text" maxlength="100" placeholder="添加一个新任务…" autocomplete="off" />
+            <button class="add-button" type="submit">添加</button>
+          </div>
+          <fieldset class="category-picker">
+            <legend>选择分类</legend>
+            <label class="category-option category-red">
+              <input type="radio" name="category" value="urgent-important" />
+              <span></span>紧急重要
+            </label>
+            <label class="category-option category-orange">
+              <input type="radio" name="category" value="important" checked />
+              <span></span>重要不紧急
+            </label>
+            <label class="category-option category-green">
+              <input type="radio" name="category" value="low" />
+              <span></span>不紧急不重要
+            </label>
+          </fieldset>
+          <label class="deadline-field" for="deadline-input">
+            <span>DDL</span>
+            <input id="deadline-input" type="datetime-local" />
+          </label>
         </form>
 
         <div class="toolbar">
@@ -57,7 +78,12 @@
         <button class="toggle" type="button" aria-label="标记为已完成">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.2 3.2L15.5 6.8" /></svg>
         </button>
-        <span class="todo-text"></span>
+        <div class="todo-content">
+          <div class="todo-mainline">
+            <span class="todo-text"></span>
+          </div>
+          <time class="todo-deadline" hidden></time>
+        </div>
         <button class="delete" type="button" aria-label="删除任务">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
         </button>

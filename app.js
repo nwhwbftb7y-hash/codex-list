@@ -10,6 +10,13 @@ const clearCompleted = document.querySelector("#clear-completed");
 const progressRing = document.querySelector("#progress-ring");
 const progressValue = document.querySelector("#progress-value");
 const dateLabel = document.querySelector("#date-label");
+const deadlineInput = document.querySelector("#deadline-input");
+
+const CATEGORIES = {
+  "urgent-important": { label: "紧急重要", priority: 0 },
+  important: { label: "重要不紧急", priority: 1 },
+  low: { label: "不紧急不重要", priority: 2 },
+};
 
 let todos = loadTodos();
 let currentFilter = "all";
@@ -22,7 +29,13 @@ dateLabel.textContent = new Intl.DateTimeFormat("zh-CN", {
 
 function loadTodos() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [];
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [];
+    return saved.map((todo, index) => ({
+      ...todo,
+      category: CATEGORIES[todo.category] ? todo.category : "important",
+      deadline: todo.deadline || null,
+      createdAt: todo.createdAt || new Date(Date.now() - index).toISOString(),
+    }));
   } catch {
     return [];
   }
@@ -33,9 +46,20 @@ function saveTodos() {
 }
 
 function visibleTodos() {
-  if (currentFilter === "active") return todos.filter((todo) => !todo.completed);
-  if (currentFilter === "completed") return todos.filter((todo) => todo.completed);
-  return todos;
+  let filtered = todos;
+  if (currentFilter === "active") filtered = todos.filter((todo) => !todo.completed);
+  if (currentFilter === "completed") filtered = todos.filter((todo) => todo.completed);
+  return [...filtered].sort(compareTodos);
+}
+
+function compareTodos(a, b) {
+  if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
+  const categoryDifference = CATEGORIES[a.category].priority - CATEGORIES[b.category].priority;
+  if (categoryDifference) return categoryDifference;
+  if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+  if (a.deadline) return -1;
+  if (b.deadline) return 1;
+  return new Date(b.createdAt) - new Date(a.createdAt);
 }
 
 function render() {
@@ -46,10 +70,23 @@ function render() {
     const item = fragment.querySelector(".todo-item");
     const toggle = fragment.querySelector(".toggle");
     const remove = fragment.querySelector(".delete");
+    const deadline = fragment.querySelector(".todo-deadline");
 
     item.dataset.id = todo.id;
+    item.dataset.category = todo.category;
     item.classList.toggle("completed", todo.completed);
     fragment.querySelector(".todo-text").textContent = todo.text;
+    if (todo.deadline) {
+      const deadlineDate = new Date(todo.deadline);
+      const remaining = deadlineDate - Date.now();
+      deadline.hidden = false;
+      deadline.dateTime = deadlineDate.toISOString();
+      deadline.textContent = new Intl.DateTimeFormat("zh-CN", {
+        month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+      }).format(deadlineDate);
+      deadline.classList.toggle("overdue", remaining < 0 && !todo.completed);
+      deadline.classList.toggle("due-soon", remaining >= 0 && remaining <= 24 * 60 * 60 * 1000);
+    }
     toggle.setAttribute("aria-label", todo.completed ? "标记为未完成" : "标记为已完成");
 
     toggle.addEventListener("click", () => toggleTodo(todo.id));
@@ -69,8 +106,15 @@ function render() {
   progressRing.setAttribute("aria-label", `完成进度 ${progress}%`);
 }
 
-function addTodo(text) {
-  todos.unshift({ id: crypto.randomUUID(), text, completed: false });
+function addTodo(text, category, deadline) {
+  todos.unshift({
+    id: crypto.randomUUID(),
+    text,
+    category,
+    deadline: deadline || null,
+    createdAt: new Date().toISOString(),
+    completed: false,
+  });
   saveTodos();
   render();
 }
@@ -94,8 +138,10 @@ form.addEventListener("submit", (event) => {
     input.focus();
     return;
   }
-  addTodo(text);
+  const category = new FormData(form).get("category");
+  addTodo(text, category, deadlineInput.value);
   input.value = "";
+  deadlineInput.value = "";
   input.focus();
 });
 
