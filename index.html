@@ -21,6 +21,11 @@
           </div>
         </header>
 
+        <nav class="page-nav" aria-label="页面导航">
+          <a class="active" href="index.html">任务清单</a>
+          <a href="manage.html">周期管理与总结</a>
+        </nav>
+
         <form class="add-form" id="todo-form">
           <div class="add-row">
             <label class="sr-only" for="todo-input">添加新任务</label>
@@ -47,6 +52,17 @@
             <span>DDL</span>
             <input id="deadline-input" type="datetime-local" />
           </label>
+          <div class="repeat-fields">
+            <label for="repeat-select">重复</label>
+            <select id="repeat-select">
+              <option value="none">不重复</option>
+              <option value="daily">每天</option>
+              <option value="weekly">每周</option>
+              <option value="monthly">每月</option>
+            </select>
+            <label class="repeat-end" for="repeat-end" hidden>结束于</label>
+            <input id="repeat-end" class="repeat-end" type="date" hidden />
+          </div>
         </form>
 
         <div class="toolbar">
@@ -83,13 +99,45 @@
             <span class="todo-text"></span>
           </div>
           <time class="todo-deadline" hidden></time>
+          <span class="repeat-mark" hidden></span>
         </div>
+        <button class="edit" type="button" aria-label="编辑任务">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 14.5V17h2.5L15 8.5 11.5 5 4 12.5v2ZM10.5 6l3.5 3.5" /></svg>
+        </button>
         <button class="delete" type="button" aria-label="删除任务">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
         </button>
       </li>
     </template>
 
+    <dialog class="edit-dialog" id="edit-dialog">
+      <form method="dialog" id="edit-form">
+        <div class="dialog-heading">
+          <div><p>编辑日程</p><h2 id="edit-title">修改任务</h2></div>
+          <button class="dialog-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <label>任务名称<input id="edit-text" maxlength="100" required /></label>
+        <label>分类
+          <select id="edit-category">
+            <option value="urgent-important">紧急重要</option>
+            <option value="important">重要不紧急</option>
+            <option value="low">不紧急不重要</option>
+          </select>
+        </label>
+        <label>DDL<input id="edit-deadline" type="datetime-local" /></label>
+        <div class="dialog-actions single-actions">
+          <button class="secondary" id="save-single" type="button">仅修改此日程</button>
+          <button class="primary" id="save-future" type="button">修改此日程及以后</button>
+        </div>
+        <div class="dialog-actions delete-actions">
+          <button class="danger-soft" id="delete-single" type="button">仅删除此日程</button>
+          <button class="danger-soft" id="delete-future" type="button">删除此日程及以后</button>
+          <button class="danger" id="delete-all" type="button">删除所有重复日程</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="data.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

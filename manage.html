@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3ed" />
+    <title>周期管理与总结 · Todo List</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell manage-shell">
+      <section class="todo-card manage-card">
+        <header class="manage-hero">
+          <div><p class="eyebrow">SCHEDULE CENTER</p><h1>周期管理与总结</h1><p class="subtitle">集中维护重复日程，回顾每一段完成的路。</p></div>
+          <a class="back-link" href="index.html">← 返回清单</a>
+        </header>
+
+        <nav class="page-nav" aria-label="管理功能">
+          <button class="active" type="button" data-panel="series-panel">周期日程</button>
+          <button type="button" data-panel="summary-panel">完成总结</button>
+        </nav>
+
+        <section id="series-panel" class="manage-panel">
+          <div class="section-heading"><div><h2>重复日程</h2><p>查看、修改或停止周期计划。</p></div><span id="series-count"></span></div>
+          <div class="series-list" id="series-list"></div>
+          <div class="manage-empty" id="series-empty" hidden>还没有周期日程，请在任务清单中创建。</div>
+        </section>
+
+        <section id="summary-panel" class="manage-panel" hidden>
+          <div class="section-heading"><div><h2>完成总结</h2><p>按完成时间筛选并导出 CSV 文件。</p></div></div>
+          <div class="summary-controls">
+            <div class="range-presets">
+              <button class="range-button active" type="button" data-range="week">本周</button>
+              <button class="range-button" type="button" data-range="month">本月</button>
+              <button class="range-button" type="button" data-range="custom">自定义</button>
+            </div>
+            <div class="custom-range" id="custom-range" hidden>
+              <label>开始<input id="range-start" type="date" /></label>
+              <label>结束<input id="range-end" type="date" /></label>
+              <button id="apply-range" type="button">查看</button>
+            </div>
+            <button class="export-button" id="export-summary" type="button">导出当前总结</button>
+          </div>
+          <div class="summary-stats">
+            <div><strong id="summary-total">0</strong><span>完成总数</span></div>
+            <div><strong id="summary-urgent">0</strong><span>紧急重要</span></div>
+            <div><strong id="summary-series">0</strong><span>周期日程</span></div>
+          </div>
+          <p class="summary-period" id="summary-period"></p>
+          <div class="summary-list" id="summary-list"></div>
+          <div class="manage-empty" id="summary-empty" hidden>这个时间范围内还没有已完成日程。</div>
+        </section>
+      </section>
+    </main>
+
+    <dialog class="edit-dialog" id="series-dialog">
+      <form method="dialog" id="series-form">
+        <div class="dialog-heading"><div><p>周期规则</p><h2>编辑重复日程</h2></div><button class="dialog-close" type="button" aria-label="关闭">×</button></div>
+        <label>任务名称<input id="series-text" maxlength="100" required /></label>
+        <label>分类<select id="series-category"><option value="urgent-important">紧急重要</option><option value="important">重要不紧急</option><option value="low">不紧急不重要</option></select></label>
+        <label>首次时间<input id="series-start" type="datetime-local" required /></label>
+        <label>周期<select id="series-frequency"><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></label>
+        <label>结束日期（可留空）<input id="series-end" type="date" /></label>
+        <div class="dialog-actions"><button class="secondary" type="button" id="cancel-series">取消</button><button class="primary" type="button" id="save-series">保存规则</button></div>
+      </form>
+    </dialog>
+
+    <script src="data.js"></script>
+    <script src="manage.js"></script>
+  </body>
+</html>
