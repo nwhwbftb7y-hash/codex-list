@@ -60,7 +60,7 @@
         <label>分类<select id="series-category"><option value="urgent-important">紧急重要</option><option value="important">重要不紧急</option><option value="low">不紧急不重要</option></select></label>
         <label>首次时间<input id="series-start" type="datetime-local" required /></label>
         <label>周期<select id="series-frequency"><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></label>
-        <label>结束日期（可留空）<input id="series-end" type="date" /></label>
+        <label>结束日期（留空默认首次时间的10年后）<input id="series-end" type="date" /></label>
         <div class="dialog-actions"><button class="secondary" type="button" id="cancel-series">取消</button><button class="primary" type="button" id="save-series">保存规则</button></div>
       </form>
     </dialog>

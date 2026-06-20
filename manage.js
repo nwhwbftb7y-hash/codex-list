@@ -160,7 +160,12 @@ document.querySelector("#save-series").addEventListener("click", () => {
   TodoStore.updateSeries(editingSeriesId, {
     text, category: document.querySelector("#series-category").value,
     startAt, frequency: document.querySelector("#series-frequency").value,
-    endAt: endValue ? new Date(`${endValue}T23:59:59`).toISOString() : null,
+    endAt: endValue ? new Date(`${endValue}T23:59:59`).toISOString() : (() => {
+      const end = new Date(startAt);
+      end.setFullYear(end.getFullYear() + 10);
+      end.setHours(23, 59, 59, 999);
+      return end.toISOString();
+    })(),
   });
   seriesDialog.close();
   renderSeries();

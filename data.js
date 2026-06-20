@@ -52,12 +52,20 @@
   function loadSeries() {
     return read(SERIES_KEY, []).map((series) => ({
       ...series,
+      endAt: series.endAt || defaultSeriesEnd(series.startAt),
       exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
     }));
   }
 
   function saveSeries(series) {
     localStorage.setItem(SERIES_KEY, JSON.stringify(series));
+  }
+
+  function defaultSeriesEnd(startAt) {
+    const end = new Date(startAt);
+    end.setFullYear(end.getFullYear() + 10);
+    end.setHours(23, 59, 59, 999);
+    return end.toISOString();
   }
 
   function addPeriod(value, frequency, anchorDay) {
@@ -119,7 +127,8 @@
     seriesList.push({
       id: uid(), text: data.text, category: data.category,
       startAt: new Date(data.startAt).toISOString(),
-      frequency: data.frequency, endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : null,
+      frequency: data.frequency,
+      endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(data.startAt),
       createdAt: new Date().toISOString(), exceptions: [],
     });
     saveSeries(seriesList);
