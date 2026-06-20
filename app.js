@@ -32,10 +32,14 @@ function refreshData() {
 }
 
 function visibleTodos() {
-  let filtered = todos;
-  if (currentFilter === "active") filtered = todos.filter((todo) => !todo.completed);
-  if (currentFilter === "completed") filtered = todos.filter((todo) => todo.completed);
-  return [...filtered].sort(compareTodos);
+  let filtered = collapseRecurring(todos);
+  if (currentFilter === "active") filtered = filtered.filter((todo) => !todo.completed);
+  if (currentFilter === "completed") filtered = filtered.filter((todo) => todo.completed);
+  return filtered.sort(compareTodos);
+}
+
+function collapseRecurring(items) {
+  return TodoStore.collapseTodos(items);
 }
 
 function compareTodos(a, b) {
@@ -88,7 +92,13 @@ function render() {
     if (todo.seriesId) {
       const series = TodoStore.loadSeries().find((item) => item.id === todo.seriesId);
       repeatMark.hidden = false;
-      repeatMark.textContent = series ? `↻ ${FREQUENCIES[series.frequency]}` : "↻ 重复日程";
+      if (series && todo.completed) {
+        const completedLabels = { daily: "本日已完成", weekly: "本周已完成", monthly: "本月已完成" };
+        repeatMark.textContent = `✓ ${completedLabels[series.frequency]}`;
+        repeatMark.classList.add("period-completed");
+      } else {
+        repeatMark.textContent = series ? `↻ ${FREQUENCIES[series.frequency]}` : "↻ 重复日程";
+      }
     }
 
     toggle.setAttribute("aria-label", todo.completed ? "标记为未完成" : "标记为已完成");
@@ -101,9 +111,10 @@ function render() {
     list.append(fragment);
   });
 
-  const activeCount = todos.filter((todo) => !todo.completed).length;
-  const completedCount = todos.length - activeCount;
-  const progress = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
+  const displayUniverse = collapseRecurring(todos);
+  const activeCount = displayUniverse.filter((todo) => !todo.completed).length;
+  const completedCount = displayUniverse.length - activeCount;
+  const progress = displayUniverse.length ? Math.round((completedCount / displayUniverse.length) * 100) : 0;
   emptyState.hidden = visible.length > 0;
   itemsLeft.textContent = `${activeCount} 件待完成`;
   clearCompleted.disabled = completedCount === 0;
@@ -150,15 +161,12 @@ form.addEventListener("submit", (event) => {
   if (!text) return input.focus();
   const category = new FormData(form).get("category");
   if (repeatSelect.value !== "none") {
-    if (!deadlineInput.value) {
-      alert("重复日程需要先设置首次 DDL 时间。");
-      return deadlineInput.focus();
-    }
-    if (repeatEnd.value && new Date(`${repeatEnd.value}T23:59:59`) < new Date(deadlineInput.value)) {
-      alert("重复结束日期不能早于首次 DDL。");
+    const repeatStart = deadlineInput.value || new Date().toISOString();
+    if (repeatEnd.value && new Date(`${repeatEnd.value}T23:59:59`) < new Date(repeatStart)) {
+      alert("重复结束日期不能早于今天或首次 DDL。");
       return repeatEnd.focus();
     }
-    TodoStore.addSeries({ text, category, startAt: deadlineInput.value, frequency: repeatSelect.value, endAt: repeatEnd.value });
+    TodoStore.addSeries({ text, category, startAt: deadlineInput.value || null, frequency: repeatSelect.value, endAt: repeatEnd.value });
   } else {
     TodoStore.addTodo({ text, category, deadline: deadlineInput.value || null });
   }

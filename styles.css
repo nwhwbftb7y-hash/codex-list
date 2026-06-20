@@ -148,6 +148,7 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
 .todo-deadline.overdue { color: #d8433b; font-weight: 600; }
 .todo-deadline.overdue::before { content: "已逾期 · "; }
 .repeat-mark { padding: 2px 6px; color: #716a63; background: rgba(255,255,255,.58); border-radius: 5px; font-size: 10px; }
+.repeat-mark.period-completed { color: #49785a; background: rgba(232,247,237,.9); font-weight: 700; }
 .completed .todo-text { color: #aaa39b; text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .completed .todo-deadline { color: #aaa39b; text-decoration: line-through; }
 .delete, .edit { display: grid; place-items: center; width: 32px; height: 32px; padding: 7px; opacity: 0; border: 0; border-radius: 8px; background: transparent; transition: .15s; }

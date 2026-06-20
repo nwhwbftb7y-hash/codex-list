@@ -52,6 +52,7 @@
   function loadSeries() {
     return read(SERIES_KEY, []).map((series) => ({
       ...series,
+      hasDeadline: series.hasDeadline !== undefined ? Boolean(series.hasDeadline) : true,
       endAt: series.endAt || defaultSeriesEnd(series.startAt),
       exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
     }));
@@ -100,7 +101,8 @@
         if (withinEnd && !series.exceptions.includes(key) && !existing.has(`${series.id}|${key}`)) {
           todos.push(normalizeTodo({
             id: uid(), text: series.text, category: series.category,
-            deadline: key, scheduledAt: key, createdAt: series.createdAt,
+            deadline: series.hasDeadline ? key : null,
+            scheduledAt: key, createdAt: series.createdAt,
             completed: false, seriesId: series.id, occurrenceKey: key,
           }, todos.length));
           existing.add(`${series.id}|${key}`);
@@ -124,11 +126,13 @@
 
   function addSeries(data) {
     const seriesList = loadSeries();
+    const startAt = data.startAt || new Date().toISOString();
     seriesList.push({
       id: uid(), text: data.text, category: data.category,
-      startAt: new Date(data.startAt).toISOString(),
+      startAt: new Date(startAt).toISOString(),
+      hasDeadline: Boolean(data.startAt),
       frequency: data.frequency,
-      endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(data.startAt),
+      endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(startAt),
       createdAt: new Date().toISOString(), exceptions: [],
     });
     saveSeries(seriesList);
@@ -192,6 +196,7 @@
     const newSeries = {
       ...oldSeries, id: uid(), text: changes.text, category: changes.category,
       startAt: new Date(changes.deadline || target.occurrenceKey).toISOString(),
+      hasDeadline: Boolean(changes.deadline),
       endAt: remainingEnd, createdAt: new Date().toISOString(), exceptions: [],
     };
     seriesList.push(newSeries);
@@ -215,9 +220,25 @@
     saveTodos(loadTodos().filter((todo) => todo.seriesId !== id));
   }
 
+  function collapseTodos(items) {
+    const standalone = items.filter((todo) => !todo.seriesId);
+    const groups = new Map();
+    items.filter((todo) => todo.seriesId).forEach((todo) => {
+      if (!groups.has(todo.seriesId)) groups.set(todo.seriesId, []);
+      groups.get(todo.seriesId).push(todo);
+    });
+    const now = Date.now();
+    const representatives = [...groups.values()].map((occurrences) => {
+      const ordered = occurrences.sort((a, b) => new Date(a.scheduledAt || a.createdAt) - new Date(b.scheduledAt || b.createdAt));
+      const alreadyStarted = ordered.filter((todo) => new Date(todo.scheduledAt || todo.createdAt).getTime() <= now);
+      return alreadyStarted.length ? alreadyStarted[alreadyStarted.length - 1] : ordered[0];
+    });
+    return [...standalone, ...representatives];
+  }
+
   window.TodoStore = {
     categories, frequencies, loadTodos, saveTodos, loadSeries, saveSeries,
     ensureOccurrences, addTodo, addSeries, toggleTodo, deleteOccurrence,
-    updateOccurrence, updateSeries, deleteSeries,
+    updateOccurrence, updateSeries, deleteSeries, collapseTodos,
   };
 })();
