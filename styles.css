@@ -290,3 +290,121 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
   .summary-row { flex-direction: column; gap: 6px; }
   .tip { display: none; }
 }
+
+/* Interactive Scottish Highland cow desk pet */
+.desk-pet {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 40;
+  width: 150px;
+  text-align: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.highland-cow {
+  position: relative;
+  width: 142px;
+  height: 126px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 8px 8px rgba(70, 47, 30, .18));
+  transform-origin: 50% 100%;
+}
+.highland-cow:focus-visible { outline: 3px solid rgba(232, 90, 58, .45); outline-offset: 5px; border-radius: 45%; }
+.cow-body {
+  position: absolute; left: 28px; bottom: 18px; width: 88px; height: 68px;
+  border: 2px solid #7c5135; border-radius: 48% 52% 44% 46%;
+  background: radial-gradient(circle at 68% 32%, #d09a65 0 12%, transparent 13%), linear-gradient(145deg, #c88952, #a7683f 72%);
+  box-shadow: inset -10px -8px 0 rgba(91, 52, 31, .12);
+}
+.cow-patch { position: absolute; right: 12px; top: 13px; width: 24px; height: 18px; border-radius: 50%; background: rgba(242, 199, 151, .25); transform: rotate(-18deg); }
+.cow-head {
+  position: absolute; left: 41px; top: 12px; width: 68px; height: 73px;
+  border: 2px solid #765035; border-radius: 45% 45% 50% 50%;
+  background: linear-gradient(155deg, #d6a16c, #b97848 78%);
+  box-shadow: inset -7px -5px 0 rgba(90, 51, 30, .1);
+  z-index: 4;
+}
+.cow-horn { position: absolute; top: -12px; width: 25px; height: 18px; border-top: 7px solid #ead8b8; border-radius: 60% 60% 0 0; z-index: -1; }
+.horn-left { left: -13px; transform: rotate(-24deg); }
+.horn-right { right: -13px; transform: rotate(24deg) scaleX(-1); }
+.cow-ear { position: absolute; top: 7px; width: 21px; height: 14px; border: 2px solid #765035; background: #b87648; border-radius: 70% 20% 70% 20%; z-index: -1; }
+.ear-left { left: -14px; transform: rotate(-18deg); }
+.ear-right { right: -14px; transform: rotate(18deg) scaleX(-1); }
+.cow-fringe { position: absolute; top: -3px; width: 29px; height: 36px; border-radius: 55% 55% 65% 45%; background: #b97747; box-shadow: inset -3px -3px 0 rgba(96, 55, 33, .1); z-index: 2; }
+.fringe-one { left: 5px; transform: rotate(22deg); }
+.fringe-two { left: 20px; top: -7px; height: 43px; background: #c48752; transform: rotate(-5deg); }
+.fringe-three { right: 3px; transform: rotate(-25deg); }
+.cow-eye { position: absolute; top: 35px; width: 7px; height: 8px; border-radius: 50%; background: #29201a; box-shadow: 1px 1px 0 #fff; z-index: 3; transition: transform .15s; }
+.eye-left { left: 17px; }.eye-right { right: 17px; }
+.cow-muzzle { position: absolute; left: 13px; bottom: 6px; width: 42px; height: 25px; border: 1px solid #b37b5d; border-radius: 50%; background: #e2b592; z-index: 3; }
+.cow-muzzle b { position: absolute; top: 10px; width: 4px; height: 3px; border-radius: 50%; background: #7d5847; }
+.cow-muzzle b:first-child { left: 11px; }.cow-muzzle b:last-child { right: 11px; }
+.cow-leg { position: absolute; bottom: 10px; width: 16px; height: 27px; border: 2px solid #765035; border-radius: 7px 7px 5px 5px; background: #ad6e43; z-index: -1; }
+.leg-left { left: 43px; }.leg-right { right: 39px; }
+.cow-tail { position: absolute; right: 16px; bottom: 43px; width: 30px; height: 33px; border-right: 5px solid #8c5938; border-radius: 0 70% 45% 0; transform-origin: 5px 28px; z-index: -1; animation: cow-tail 3s ease-in-out infinite; }
+.cow-tail i { position: absolute; right: -7px; top: -2px; width: 12px; height: 15px; border-radius: 70% 40%; background: #72462f; transform: rotate(-20deg); }
+.cow-shadow { position: absolute; left: 25px; bottom: 3px; width: 96px; height: 15px; border-radius: 50%; background: rgba(65, 43, 29, .15); z-index: -2; }
+.cow-speech {
+  position: absolute; right: 7px; bottom: 130px; width: max-content; max-width: 190px;
+  padding: 8px 11px; border: 1px solid #e5d7c7; border-radius: 13px 13px 4px 13px;
+  background: rgba(255, 253, 249, .96); color: #6d513e; box-shadow: 0 7px 22px rgba(72, 49, 34, .12);
+  font-size: 12px; line-height: 1.45; opacity: 0; transform: translateY(7px) scale(.96);
+  pointer-events: none; transition: .2s ease;
+}
+.desk-pet:hover .cow-speech, .cow-speech.show { opacity: 1; transform: translateY(0) scale(1); }
+.cow-affection { display: inline-block; margin-top: -3px; padding: 3px 8px; border-radius: 10px; background: rgba(255,253,249,.8); color: #896b57; font-size: 10px; }
+.cow-affection b { color: #e45c42; }
+.cow-heart { position: absolute; left: 67px; top: 14px; color: #e75c58; font-size: 18px; pointer-events: none; animation: cow-heart 1.1s ease-out forwards; }
+.highland-cow.is-petted { animation: cow-bounce .55s ease; }
+.highland-cow.is-petted .cow-eye { transform: scaleY(.28); }
+.highland-cow.is-petted .cow-tail { animation: cow-tail-fast .18s ease-in-out 3 alternate; }
+@keyframes cow-bounce { 0%,100% { transform: translateY(0) rotate(0); } 35% { transform: translateY(-12px) rotate(-3deg); } 65% { transform: translateY(-3px) rotate(3deg); } }
+@keyframes cow-tail { 0%,100% { transform: rotate(-7deg); } 50% { transform: rotate(12deg); } }
+@keyframes cow-tail-fast { from { transform: rotate(-15deg); } to { transform: rotate(22deg); } }
+@keyframes cow-heart { 0% { opacity: 0; transform: translate(0, 10px) scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--heart-x), -58px) scale(1.2) rotate(12deg); } }
+
+@media (max-width: 600px) {
+  .desk-pet { right: 4px; bottom: max(7px, env(safe-area-inset-bottom)); width: 118px; transform: scale(.82); transform-origin: right bottom; }
+  .cow-speech { right: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cow-tail, .highland-cow.is-petted, .cow-heart { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Photorealistic fluffy-calf replacement */
+.desk-pet { width: 190px; }
+.highland-cow {
+  width: 188px;
+  height: 158px;
+  touch-action: none;
+  cursor: grab;
+  filter: drop-shadow(0 10px 9px rgba(70, 47, 30, .22));
+}
+.highland-cow.is-dragging { cursor: grabbing; filter: drop-shadow(0 16px 12px rgba(70, 47, 30, .18)); }
+.cow-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  transform-origin: 50% 92%;
+}
+.highland-cow:hover .cow-image { transform: scale(1.025); }
+.highland-cow.is-dragging .cow-image { transform: scale(1.04) rotate(-2deg); }
+.highland-cow .cow-shadow { left: 29px; bottom: 7px; width: 130px; height: 15px; }
+.cow-speech { bottom: 165px; }
+.cow-heart { left: 88px; top: 11px; }
+.highland-cow.is-petted .cow-image { animation: cow-image-nod .55s ease; }
+@keyframes cow-image-nod { 0%,100% { transform: translateY(0) rotate(0); } 35% { transform: translateY(-9px) rotate(-2deg) scale(1.04); } 70% { transform: translateY(-2px) rotate(2deg); } }
+
+@media (max-width: 600px) {
+  .desk-pet { width: 150px; transform: none; }
+  .highland-cow { width: 148px; height: 126px; }
+  .cow-speech { bottom: 132px; max-width: 170px; }
+}
