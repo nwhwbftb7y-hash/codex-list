@@ -12,6 +12,27 @@ let activeRange = "week";
 let editingSeriesId = null;
 let currentSummary = [];
 
+const seriesFrequency = document.querySelector("#series-frequency");
+const seriesWeekday = document.querySelector("#series-weekday");
+const seriesMonthday = document.querySelector("#series-monthday");
+for (let day = 1; day <= 31; day += 1) {
+  const option = document.createElement("option");
+  option.value = String(day);
+  option.textContent = `${day} 日`;
+  seriesMonthday.append(option);
+}
+
+function updateSeriesRepeatFields() {
+  document.querySelector(".series-weekly").hidden = seriesFrequency.value !== "weekly";
+  document.querySelector(".series-monthly").hidden = seriesFrequency.value !== "monthly";
+}
+
+function recurrenceLabel(series) {
+  if (series.frequency === "weekly") return `每周${["日", "一", "二", "三", "四", "五", "六"][Number(series.repeatOn)]}`;
+  if (series.frequency === "monthly") return `每月 ${series.repeatOn} 日`;
+  return frequencies[series.frequency];
+}
+
 TodoStore.ensureOccurrences();
 
 function localInput(value) {
@@ -48,7 +69,7 @@ function renderSeries() {
       </div>
       <div class="series-actions"><button type="button" data-action="edit">编辑</button><button class="danger-text" type="button" data-action="delete">删除整组</button></div>`;
     card.querySelector("h3").textContent = series.text;
-    card.querySelector(".series-rule").textContent = `${frequencies[series.frequency]} · ${categories[series.category].label}${series.endAt ? ` · 至 ${formatDate(series.endAt, false)}` : " · 持续重复"}`;
+    card.querySelector(".series-rule").textContent = `${recurrenceLabel(series)} · ${categories[series.category].label}${series.endAt ? ` · 至 ${formatDate(series.endAt, false)}` : " · 持续重复"}`;
     card.querySelector(".series-start").textContent = series.deadline ? `固定 DDL：${formatDate(series.deadline)}` : "固定 DDL：未设置";
     card.querySelector('[data-action="edit"]').addEventListener("click", () => openSeriesEditor(series.id));
     card.querySelector('[data-action="delete"]').addEventListener("click", () => {
@@ -65,7 +86,10 @@ function openSeriesEditor(id) {
   document.querySelector("#series-text").value = series.text;
   document.querySelector("#series-category").value = series.category;
   document.querySelector("#series-start").value = series.deadline ? localInput(series.deadline) : "";
-  document.querySelector("#series-frequency").value = series.frequency;
+  seriesFrequency.value = series.frequency;
+  seriesWeekday.value = String(series.frequency === "weekly" ? series.repeatOn : new Date(series.startAt).getDay());
+  seriesMonthday.value = String(series.frequency === "monthly" ? series.repeatOn : new Date(series.startAt).getDate());
+  updateSeriesRepeatFields();
   document.querySelector("#series-end").value = dateInput(series.endAt);
   seriesDialog.showModal();
 }
@@ -148,6 +172,7 @@ document.querySelectorAll(".range-button").forEach((button) => {
 
 document.querySelector("#apply-range").addEventListener("click", renderSummary);
 document.querySelector("#export-summary").addEventListener("click", exportSummary);
+seriesFrequency.addEventListener("change", updateSeriesRepeatFields);
 document.querySelector("#save-series").addEventListener("click", () => {
   const text = document.querySelector("#series-text").value.trim();
   const deadline = document.querySelector("#series-start").value;
@@ -161,7 +186,9 @@ document.querySelector("#save-series").addEventListener("click", () => {
     text, category: document.querySelector("#series-category").value,
     deadline: deadline ? new Date(deadline).toISOString() : null,
     hasDeadline: Boolean(deadline),
-    frequency: document.querySelector("#series-frequency").value,
+    frequency: seriesFrequency.value,
+    repeatOn: seriesFrequency.value === "weekly" ? Number(seriesWeekday.value)
+      : seriesFrequency.value === "monthly" ? Number(seriesMonthday.value) : null,
     endAt: endValue ? new Date(`${endValue}T23:59:59`).toISOString() : null,
   });
   seriesDialog.close();

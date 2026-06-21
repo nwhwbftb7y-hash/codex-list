@@ -53,11 +53,25 @@
     const raw = read(SERIES_KEY, []);
     const migratedIds = [];
     const normalized = raw.map((series) => {
-      if (series.modelVersion === 2) {
+      if (series.modelVersion === 3) {
         return {
           ...series,
           deadline: series.deadline || null,
           hasDeadline: Boolean(series.deadline),
+          repeatOn: normalizeRepeatOn(series.frequency, series.repeatOn, series.startAt),
+          endAt: series.endAt || defaultSeriesEnd(series.startAt),
+          exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
+        };
+      }
+
+      if (series.modelVersion === 2) {
+        migratedIds.push(series.id);
+        return {
+          ...series,
+          modelVersion: 3,
+          deadline: series.deadline || null,
+          hasDeadline: Boolean(series.deadline),
+          repeatOn: normalizeRepeatOn(series.frequency, series.repeatOn, series.startAt),
           endAt: series.endAt || defaultSeriesEnd(series.startAt),
           exceptions: Array.isArray(series.exceptions) ? series.exceptions : [],
         };
@@ -70,10 +84,11 @@
       migratedIds.push(series.id);
       return {
         ...series,
-        modelVersion: 2,
+        modelVersion: 3,
         startAt: new Date(scheduleStart).toISOString(),
         deadline: hadDeadline ? new Date(oldStart).toISOString() : null,
         hasDeadline: hadDeadline,
+        repeatOn: normalizeRepeatOn(series.frequency, series.repeatOn, scheduleStart),
         endAt: series.endAt || defaultSeriesEnd(scheduleStart),
         exceptions: [],
       };
@@ -99,6 +114,83 @@
     return end.toISOString();
   }
 
+  function normalizeRepeatOn(frequency, repeatOn, startAt) {
+    const start = new Date(startAt || Date.now());
+    if (frequency === "weekly") return Number.isInteger(Number(repeatOn)) ? Number(repeatOn) : start.getDay();
+    if (frequency === "monthly") return Number.isInteger(Number(repeatOn)) ? Number(repeatOn) : start.getDate();
+    return null;
+  }
+
+  function alignScheduleStart(frequency, repeatOn, value = new Date()) {
+    const date = new Date(value);
+    if (frequency === "weekly") {
+      const target = Number(repeatOn);
+      const delta = (target - date.getDay() + 7) % 7;
+      date.setDate(date.getDate() + delta);
+    }
+    if (frequency === "monthly") {
+      const target = Number(repeatOn);
+      const lastThisMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      const thisMonthDay = Math.min(target, lastThisMonth);
+      if (date.getDate() <= thisMonthDay) date.setDate(thisMonthDay);
+      else {
+        const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1, date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+        const lastNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+        nextMonth.setDate(Math.min(target, lastNextMonth));
+        return nextMonth;
+      }
+    }
+    return date;
+  }
+
+  function sameLocalDate(a, b) {
+    const first = new Date(a);
+    const second = new Date(b);
+    return first.getFullYear() === second.getFullYear()
+      && first.getMonth() === second.getMonth()
+      && first.getDate() === second.getDate();
+  }
+
+  function seriesDueOn(series, value) {
+    const date = new Date(value);
+    const start = new Date(series.startAt);
+    const end = new Date(series.endAt);
+    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const seriesStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const seriesEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
+    if (dayStart < seriesStart || dayStart > seriesEnd) return false;
+    if ((series.exceptions || []).some((key) => sameLocalDate(key, date))) return false;
+    if (series.frequency === "daily") return true;
+    if (series.frequency === "weekly") return date.getDay() === Number(series.repeatOn);
+    if (series.frequency === "monthly") {
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(Number(series.repeatOn), lastDay);
+    }
+    return false;
+  }
+
+  function calendarItemsForDate(value) {
+    const date = new Date(value);
+    const seriesList = loadSeries();
+    const todos = loadTodos();
+    const repeating = seriesList.filter((series) => seriesDueOn(series, date)).map((series) => ({
+      kind: "repeat", id: series.id, text: series.text,
+      category: series.category, frequency: series.frequency, repeatOn: series.repeatOn,
+    }));
+    const deadlines = seriesList
+      .filter((series) => series.deadline && sameLocalDate(series.deadline, date))
+      .map((series) => ({
+        kind: "deadline", id: series.id, text: series.text,
+        category: series.category, deadline: series.deadline, seriesId: series.id,
+      }));
+    todos.filter((todo) => !todo.seriesId && todo.deadline && sameLocalDate(todo.deadline, date))
+      .forEach((todo) => deadlines.push({
+        kind: "deadline", id: todo.id, text: todo.text,
+        category: todo.category, deadline: todo.deadline, seriesId: null,
+      }));
+    return { repeating, deadlines };
+  }
+
   function addPeriod(value, frequency, anchorDay) {
     const date = new Date(value);
     if (frequency === "daily") date.setDate(date.getDate() + 1);
@@ -122,7 +214,7 @@
 
     seriesList.forEach((series) => {
       const start = new Date(series.startAt);
-      const anchorDay = start.getDate();
+      const anchorDay = series.frequency === "monthly" ? Number(series.repeatOn) : start.getDate();
       let cursor = new Date(start);
       let guard = 0;
       while (cursor <= horizon && guard < 1000) {
@@ -156,14 +248,16 @@
 
   function addSeries(data) {
     const seriesList = loadSeries();
-    const startAt = new Date().toISOString();
+    const repeatOn = normalizeRepeatOn(data.frequency, data.repeatOn, new Date());
+    const startAt = alignScheduleStart(data.frequency, repeatOn, new Date()).toISOString();
     seriesList.push({
       id: uid(), text: data.text, category: data.category,
-      modelVersion: 2,
+      modelVersion: 3,
       startAt,
       deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
       hasDeadline: Boolean(data.deadline),
       frequency: data.frequency,
+      repeatOn,
       endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(startAt),
       createdAt: new Date().toISOString(), exceptions: [],
     });
@@ -214,9 +308,28 @@
   function updateOccurrence(id, changes, scope = "single") {
     const target = loadTodos().find((todo) => todo.id === id);
     if (!target) return;
-    if (!target.seriesId || scope === "single") {
-      if (target.seriesId) addException(target.seriesId, target.occurrenceKey);
-      saveTodos(loadTodos().map((todo) => todo.id === id ? normalizeTodo({ ...todo, ...changes, detached: Boolean(target.seriesId) }, 0) : todo));
+    if (!target.seriesId) {
+      saveTodos(loadTodos().map((todo) => todo.id === id ? normalizeTodo({ ...todo, ...changes }, 0) : todo));
+      return;
+    }
+
+    // DDL belongs to the recurring series, not to an individual occurrence.
+    // Keeping it on the series prevents daily/weekly/monthly instances from
+    // silently acquiring different deadlines after a single-instance edit.
+    const fixedDeadline = changes.deadline ? new Date(changes.deadline).toISOString() : null;
+    saveSeries(loadSeries().map((series) => series.id === target.seriesId
+      ? { ...series, deadline: fixedDeadline, hasDeadline: Boolean(fixedDeadline) }
+      : series));
+    saveTodos(loadTodos().map((todo) => todo.seriesId === target.seriesId
+      ? { ...todo, deadline: fixedDeadline }
+      : todo));
+
+    if (scope === "single") {
+      // Only text/category are occurrence-specific. The fixed DDL above is
+      // deliberately shared by every occurrence in the series.
+      saveTodos(loadTodos().map((todo) => todo.id === id
+        ? normalizeTodo({ ...todo, text: changes.text, category: changes.category }, 0)
+        : todo));
       return;
     }
 
@@ -227,10 +340,10 @@
     const seriesList = loadSeries().map((series) => series.id === oldSeries.id ? { ...series, endAt: cutoff } : series);
     const newSeries = {
       ...oldSeries, id: uid(), text: changes.text, category: changes.category,
-      modelVersion: 2,
+      modelVersion: 3,
       startAt: new Date(target.occurrenceKey).toISOString(),
-      deadline: changes.deadline ? new Date(changes.deadline).toISOString() : null,
-      hasDeadline: Boolean(changes.deadline),
+      deadline: fixedDeadline,
+      hasDeadline: Boolean(fixedDeadline),
       endAt: remainingEnd, createdAt: new Date().toISOString(), exceptions: [],
     };
     seriesList.push(newSeries);
@@ -242,7 +355,13 @@
   function updateSeries(id, changes) {
     const old = loadSeries().find((series) => series.id === id);
     if (!old) return;
-    const updated = { ...old, ...changes, startAt: new Date(changes.startAt || old.startAt).toISOString() };
+    const frequency = changes.frequency || old.frequency;
+    const repeatOn = normalizeRepeatOn(frequency, changes.repeatOn, old.startAt);
+    const scheduleChanged = frequency !== old.frequency || Number(repeatOn) !== Number(old.repeatOn);
+    const updated = {
+      ...old, ...changes, modelVersion: 3, frequency, repeatOn,
+      startAt: scheduleChanged ? alignScheduleStart(frequency, repeatOn, new Date()).toISOString() : old.startAt,
+    };
     saveSeries(loadSeries().map((series) => series.id === id ? updated : series));
     const preserved = loadTodos().filter((todo) => todo.seriesId !== id || todo.completed || todo.detached);
     saveTodos(preserved);
@@ -267,22 +386,9 @@
       const ordered = occurrences.sort((a, b) => new Date(a.scheduledAt || a.createdAt) - new Date(b.scheduledAt || b.createdAt));
       const series = seriesById.get(ordered[0].seriesId);
       if (!series) return ordered[0];
-      const start = new Date(series.startAt);
-      if (start.getTime() > now) return ordered[0];
-
-      const limit = Math.min(now, new Date(series.endAt).getTime());
-      const anchorDay = start.getDate();
-      let expected = new Date(start);
-      let next = addPeriod(expected, series.frequency, anchorDay);
-      let guard = 0;
-      while (next.getTime() <= limit && guard < 5000) {
-        expected = next;
-        next = addPeriod(expected, series.frequency, anchorDay);
-        guard += 1;
-      }
-      const expectedKey = expected.toISOString();
-      // 当前周期实例若被单独删除，则整组保持隐藏；绝不提前跳到未来实例。
-      return ordered.find((todo) => todo.occurrenceKey === expectedKey) || null;
+      if (!seriesDueOn(series, new Date(now))) return null;
+      // 当天实例若被单独删除，则整组保持隐藏；绝不提前跳到未来实例。
+      return ordered.find((todo) => sameLocalDate(todo.occurrenceKey, new Date(now))) || null;
     }).filter(Boolean);
     return [...standalone, ...representatives];
   }
@@ -291,5 +397,6 @@
     categories, frequencies, loadTodos, saveTodos, loadSeries, saveSeries,
     ensureOccurrences, addTodo, addSeries, toggleTodo, deleteOccurrence,
     updateOccurrence, updateSeries, deleteSeries, collapseTodos,
+    seriesDueOn, calendarItemsForDate,
   };
 })();

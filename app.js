@@ -1,6 +1,9 @@
 const form = document.querySelector("#todo-form");
 const input = document.querySelector("#todo-input");
 const list = document.querySelector("#todo-list");
+const completedList = document.querySelector("#completed-list");
+const completedCountLabel = document.querySelector("#completed-count");
+const completedEmpty = document.querySelector("#completed-empty");
 const template = document.querySelector("#todo-template");
 const emptyState = document.querySelector("#empty-state");
 const itemsLeft = document.querySelector("#items-left");
@@ -11,39 +14,40 @@ const dateLabel = document.querySelector("#date-label");
 const deadlineInput = document.querySelector("#deadline-input");
 const repeatSelect = document.querySelector("#repeat-select");
 const repeatEnd = document.querySelector("#repeat-end");
-const repeatEndElements = document.querySelectorAll(".repeat-end");
+const weeklyDay = document.querySelector("#weekly-day");
+const monthlyDay = document.querySelector("#monthly-day");
 const editDialog = document.querySelector("#edit-dialog");
 const editText = document.querySelector("#edit-text");
 const editCategory = document.querySelector("#edit-category");
 const editDeadline = document.querySelector("#edit-deadline");
-
 const { categories: CATEGORIES, frequencies: FREQUENCIES } = TodoStore;
 let todos = TodoStore.ensureOccurrences();
-let currentFilter = "all";
 let editingId = null;
 
 dateLabel.textContent = new Intl.DateTimeFormat("zh-CN", {
   month: "long", day: "numeric", weekday: "long",
 }).format(new Date());
 
+for (let day = 1; day <= 31; day += 1) {
+  const option = document.createElement("option");
+  option.value = String(day);
+  option.textContent = `${day} 日`;
+  monthlyDay.append(option);
+}
+
+function setRepeatDefaults() {
+  const now = new Date();
+  weeklyDay.value = String(now.getDay());
+  monthlyDay.value = String(now.getDate());
+}
+setRepeatDefaults();
+
 function refreshData() {
   todos = TodoStore.ensureOccurrences();
   render();
 }
 
-function visibleTodos() {
-  let filtered = collapseRecurring(todos);
-  if (currentFilter === "active") filtered = filtered.filter((todo) => !todo.completed);
-  if (currentFilter === "completed") filtered = filtered.filter((todo) => todo.completed);
-  return filtered.sort(compareTodos);
-}
-
-function collapseRecurring(items) {
-  return TodoStore.collapseTodos(items);
-}
-
 function compareTodos(a, b) {
-  if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
   const priority = CATEGORIES[a.category].priority - CATEGORIES[b.category].priority;
   if (priority) return priority;
   if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
@@ -55,76 +59,87 @@ function compareTodos(a, b) {
 function toLocalInput(value) {
   if (!value) return "";
   const date = new Date(value);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function repeatRule(series) {
+  if (!series) return "重复日程";
+  if (series.frequency === "weekly") {
+    return `每周${["日", "一", "二", "三", "四", "五", "六"][Number(series.repeatOn)]}`;
+  }
+  if (series.frequency === "monthly") return `每月 ${series.repeatOn} 日`;
+  return FREQUENCIES[series.frequency];
+}
+
+function buildTodo(todo, target) {
+  const fragment = template.content.cloneNode(true);
+  const item = fragment.querySelector(".todo-item");
+  const toggle = fragment.querySelector(".toggle");
+  const edit = fragment.querySelector(".edit");
+  const remove = fragment.querySelector(".delete");
+  const deadline = fragment.querySelector(".todo-deadline");
+  const repeatMark = fragment.querySelector(".repeat-mark");
+  const series = todo.seriesId ? TodoStore.loadSeries().find((entry) => entry.id === todo.seriesId) : null;
+
+  item.dataset.id = todo.id;
+  item.dataset.category = todo.category;
+  item.classList.toggle("completed", todo.completed);
+  fragment.querySelector(".todo-text").textContent = todo.text;
+
+  if (todo.deadline) {
+    const deadlineDate = new Date(todo.deadline);
+    const remaining = deadlineDate - Date.now();
+    deadline.hidden = false;
+    deadline.dateTime = deadlineDate.toISOString();
+    deadline.textContent = `DDL · ${new Intl.DateTimeFormat("zh-CN", {
+      month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+    }).format(deadlineDate)}`;
+    deadline.classList.toggle("overdue", remaining < 0 && !todo.completed);
+    deadline.classList.toggle("due-soon", remaining >= 0 && remaining <= 86400000);
+  }
+
+  if (series) {
+    repeatMark.hidden = false;
+    repeatMark.textContent = todo.completed ? `✓ ${repeatRule(series)}已完成` : `↻ ${repeatRule(series)}`;
+    repeatMark.classList.toggle("period-completed", todo.completed);
+  }
+
+  toggle.setAttribute("aria-label", todo.completed ? "标记为未完成" : "标记为已完成");
+  toggle.addEventListener("click", () => { TodoStore.toggleTodo(todo.id); refreshData(); });
+  edit.addEventListener("click", () => openEditor(todo.id));
+  remove.addEventListener("click", () => {
+    if (todo.seriesId) openEditor(todo.id, true);
+    else { TodoStore.deleteOccurrence(todo.id); refreshData(); }
+  });
+  target.append(fragment);
 }
 
 function render() {
   list.replaceChildren();
-  const visible = visibleTodos();
+  completedList.replaceChildren();
 
-  visible.forEach((todo) => {
-    const fragment = template.content.cloneNode(true);
-    const item = fragment.querySelector(".todo-item");
-    const toggle = fragment.querySelector(".toggle");
-    const edit = fragment.querySelector(".edit");
-    const remove = fragment.querySelector(".delete");
-    const deadline = fragment.querySelector(".todo-deadline");
-    const repeatMark = fragment.querySelector(".repeat-mark");
+  const current = TodoStore.collapseTodos(todos);
+  const active = current.filter((todo) => !todo.completed).sort(compareTodos);
+  const completed = todos.filter((todo) => todo.completed)
+    .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
 
-    item.dataset.id = todo.id;
-    item.dataset.category = todo.category;
-    item.classList.toggle("completed", todo.completed);
-    fragment.querySelector(".todo-text").textContent = todo.text;
+  active.forEach((todo) => buildTodo(todo, list));
+  completed.forEach((todo) => buildTodo(todo, completedList));
 
-    if (todo.deadline) {
-      const deadlineDate = new Date(todo.deadline);
-      const remaining = deadlineDate - Date.now();
-      deadline.hidden = false;
-      deadline.dateTime = deadlineDate.toISOString();
-      deadline.textContent = new Intl.DateTimeFormat("zh-CN", {
-        month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
-      }).format(deadlineDate);
-      deadline.classList.toggle("overdue", remaining < 0 && !todo.completed);
-      deadline.classList.toggle("due-soon", remaining >= 0 && remaining <= 86400000);
-    }
-
-    if (todo.seriesId) {
-      const series = TodoStore.loadSeries().find((item) => item.id === todo.seriesId);
-      repeatMark.hidden = false;
-      if (series && todo.completed) {
-        const completedLabels = { daily: "本日已完成", weekly: "本周已完成", monthly: "本月已完成" };
-        repeatMark.textContent = `✓ ${completedLabels[series.frequency]}`;
-        repeatMark.classList.add("period-completed");
-      } else {
-        repeatMark.textContent = series ? `↻ ${FREQUENCIES[series.frequency]}` : "↻ 重复日程";
-      }
-    }
-
-    toggle.setAttribute("aria-label", todo.completed ? "标记为未完成" : "标记为已完成");
-    toggle.addEventListener("click", () => { TodoStore.toggleTodo(todo.id); refreshData(); });
-    edit.addEventListener("click", () => openEditor(todo.id));
-    remove.addEventListener("click", () => {
-      if (todo.seriesId) openEditor(todo.id, true);
-      else { TodoStore.deleteOccurrence(todo.id); refreshData(); }
-    });
-    list.append(fragment);
-  });
-
-  const displayUniverse = collapseRecurring(todos);
-  const activeCount = displayUniverse.filter((todo) => !todo.completed).length;
-  const completedCount = displayUniverse.length - activeCount;
-  const progress = displayUniverse.length ? Math.round((completedCount / displayUniverse.length) * 100) : 0;
-  emptyState.hidden = visible.length > 0;
-  itemsLeft.textContent = `${activeCount} 件待完成`;
-  clearCompleted.disabled = completedCount === 0;
+  const currentCompleted = current.filter((todo) => todo.completed).length;
+  const progress = current.length ? Math.round((currentCompleted / current.length) * 100) : 0;
+  emptyState.hidden = active.length > 0;
+  completedEmpty.hidden = completed.length > 0;
+  completedCountLabel.textContent = completed.length;
+  clearCompleted.disabled = completed.length === 0;
+  itemsLeft.textContent = `${active.length} 件待完成`;
   progressValue.textContent = `${progress}%`;
   progressRing.style.setProperty("--progress", `${progress * 3.6}deg`);
   progressRing.setAttribute("aria-label", `完成进度 ${progress}%`);
 }
 
 function openEditor(id, deletionOnly = false) {
-  const todo = todos.find((item) => item.id === id);
+  const todo = TodoStore.loadTodos().find((item) => item.id === id);
   if (!todo) return;
   editingId = id;
   editText.value = todo.text;
@@ -150,10 +165,14 @@ function applyEdit(scope) {
   refreshData();
 }
 
-repeatSelect.addEventListener("change", () => {
-  const show = repeatSelect.value !== "none";
-  repeatEndElements.forEach((element) => { element.hidden = !show; });
-});
+function updateRepeatFields() {
+  const value = repeatSelect.value;
+  document.querySelectorAll(".repeat-end").forEach((element) => { element.hidden = value === "none"; });
+  document.querySelectorAll(".weekly-repeat").forEach((element) => { element.hidden = value !== "weekly"; });
+  document.querySelectorAll(".monthly-repeat").forEach((element) => { element.hidden = value !== "monthly"; });
+}
+
+repeatSelect.addEventListener("change", updateRepeatFields);
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -165,26 +184,25 @@ form.addEventListener("submit", (event) => {
       alert("重复结束日期不能早于今天。");
       return repeatEnd.focus();
     }
-    TodoStore.addSeries({ text, category, deadline: deadlineInput.value || null, frequency: repeatSelect.value, endAt: repeatEnd.value });
+    const repeatOn = repeatSelect.value === "weekly" ? Number(weeklyDay.value)
+      : repeatSelect.value === "monthly" ? Number(monthlyDay.value) : null;
+    TodoStore.addSeries({
+      text, category, deadline: deadlineInput.value || null,
+      frequency: repeatSelect.value, repeatOn, endAt: repeatEnd.value,
+    });
   } else {
     TodoStore.addTodo({ text, category, deadline: deadlineInput.value || null });
   }
   form.reset();
-  repeatEndElements.forEach((element) => { element.hidden = true; });
+  setRepeatDefaults();
+  updateRepeatFields();
   input.focus();
   refreshData();
 });
 
-document.querySelectorAll(".filter").forEach((button) => {
-  button.addEventListener("click", () => {
-    currentFilter = button.dataset.filter;
-    document.querySelectorAll(".filter").forEach((item) => item.classList.toggle("active", item === button));
-    render();
-  });
-});
-
-clearCompleted.addEventListener("click", () => {
-  todos.filter((todo) => todo.completed && todo.seriesId)
+clearCompleted.addEventListener("click", (event) => {
+  event.preventDefault();
+  TodoStore.loadTodos().filter((todo) => todo.completed && todo.seriesId)
     .forEach((todo) => TodoStore.deleteOccurrence(todo.id, "single"));
   TodoStore.saveTodos(TodoStore.loadTodos().filter((todo) => !todo.completed));
   refreshData();

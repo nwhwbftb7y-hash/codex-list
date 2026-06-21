@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f6f3ed" />
+  <title>任务日历 · Todo List</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell calendar-shell">
+    <section class="todo-card calendar-card">
+      <header class="manage-hero">
+        <div><p class="eyebrow">TASK CALENDAR</p><h1>任务日历</h1><p class="subtitle">绿色表示重复日程，红色表示固定 DDL。</p></div>
+      </header>
+      <nav class="page-nav" aria-label="页面导航">
+        <a href="index.html">任务清单</a><a href="manage.html">周期管理与总结</a><a class="active" href="calendar.html">日历</a>
+      </nav>
+      <div class="calendar-toolbar">
+        <button id="prev-month" type="button" aria-label="上个月">‹</button>
+        <h2 id="calendar-title"></h2>
+        <button id="next-month" type="button" aria-label="下个月">›</button>
+        <button id="today-month" type="button">今天</button>
+      </div>
+      <div class="calendar-legend"><span class="legend-repeat">重复日程</span><span class="legend-deadline">DDL</span></div>
+      <div class="calendar-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </section>
+  </main>
+  <dialog class="edit-dialog calendar-dialog" id="day-dialog">
+    <div class="dialog-heading"><div><p>当日日程</p><h2 id="day-title"></h2></div><button class="dialog-close" type="button" aria-label="关闭">×</button></div>
+    <div id="day-tasks" class="day-tasks"></div>
+  </dialog>
+  <script src="data.js"></script><script src="calendar.js"></script>
+</body>
+</html>

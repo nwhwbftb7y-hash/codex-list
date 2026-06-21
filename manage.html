@@ -18,6 +18,7 @@
         <nav class="page-nav" aria-label="管理功能">
           <button class="active" type="button" data-panel="series-panel">周期日程</button>
           <button type="button" data-panel="summary-panel">完成总结</button>
+          <a href="calendar.html">日历</a>
         </nav>
 
         <section id="series-panel" class="manage-panel">
@@ -60,6 +61,8 @@
         <label>分类<select id="series-category"><option value="urgent-important">紧急重要</option><option value="important">重要不紧急</option><option value="low">不紧急不重要</option></select></label>
         <label>固定 DDL（可留空）<input id="series-start" type="datetime-local" /></label>
         <label>周期<select id="series-frequency"><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></label>
+        <label class="series-weekly" hidden>星期<select id="series-weekday"><option value="1">星期一</option><option value="2">星期二</option><option value="3">星期三</option><option value="4">星期四</option><option value="5">星期五</option><option value="6">星期六</option><option value="0">星期日</option></select></label>
+        <label class="series-monthly" hidden>日期<select id="series-monthday"></select></label>
         <label>结束日期（留空默认首次时间的10年后）<input id="series-end" type="date" /></label>
         <div class="dialog-actions"><button class="secondary" type="button" id="cancel-series">取消</button><button class="primary" type="button" id="save-series">保存规则</button></div>
       </form>

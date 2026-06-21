@@ -24,6 +24,7 @@
         <nav class="page-nav" aria-label="页面导航">
           <a class="active" href="index.html">任务清单</a>
           <a href="manage.html">周期管理与总结</a>
+          <a href="calendar.html">日历</a>
         </nav>
 
         <form class="add-form" id="todo-form">
@@ -60,21 +61,32 @@
               <option value="weekly">每周</option>
               <option value="monthly">每月</option>
             </select>
+            <label class="repeat-on weekly-repeat" for="weekly-day" hidden>每周</label>
+            <select id="weekly-day" class="repeat-on weekly-repeat" hidden>
+              <option value="1">星期一</option><option value="2">星期二</option>
+              <option value="3">星期三</option><option value="4">星期四</option>
+              <option value="5">星期五</option><option value="6">星期六</option>
+              <option value="0">星期日</option>
+            </select>
+            <label class="repeat-on monthly-repeat" for="monthly-day" hidden>每月</label>
+            <select id="monthly-day" class="repeat-on monthly-repeat" hidden></select>
             <label class="repeat-end" for="repeat-end" hidden>结束于（留空默认10年后）</label>
             <input id="repeat-end" class="repeat-end" type="date" hidden />
           </div>
         </form>
 
-        <div class="toolbar">
-          <div class="filters" role="tablist" aria-label="任务筛选">
-            <button class="filter active" type="button" data-filter="all">全部</button>
-            <button class="filter" type="button" data-filter="active">进行中</button>
-            <button class="filter" type="button" data-filter="completed">已完成</button>
-          </div>
-          <button class="clear-completed" id="clear-completed" type="button">清除已完成</button>
-        </div>
+        <div class="toolbar"><strong>待完成</strong></div>
 
         <ul class="todo-list" id="todo-list" aria-live="polite"></ul>
+
+        <details class="completed-section" id="completed-section">
+          <summary>
+            <span>已完成 <b id="completed-count">0</b></span>
+            <button class="clear-completed" id="clear-completed" type="button">清除已完成</button>
+          </summary>
+          <ul class="todo-list completed-list" id="completed-list" aria-live="polite"></ul>
+          <p class="completed-empty" id="completed-empty">还没有已完成的任务。</p>
+        </details>
 
         <div class="empty-state" id="empty-state" hidden>
           <div class="empty-icon">✓</div>
