@@ -18,6 +18,7 @@
         <nav class="page-nav" aria-label="管理功能">
           <button class="active" type="button" data-panel="series-panel">周期日程</button>
           <button type="button" data-panel="summary-panel">完成总结</button>
+          <button type="button" data-panel="transfer-panel">数据迁移</button>
           <a href="calendar.html">日历</a>
         </nav>
 
@@ -50,6 +51,27 @@
           <p class="summary-period" id="summary-period"></p>
           <div class="summary-list" id="summary-list"></div>
           <div class="manage-empty" id="summary-empty" hidden>这个时间范围内还没有已完成日程。</div>
+        </section>
+
+        <section id="transfer-panel" class="manage-panel" hidden>
+          <div class="section-heading"><div><h2>跨设备数据迁移</h2><p>旧设备导出备份，新设备选择同一个文件即可完整恢复。</p></div></div>
+          <div class="transfer-grid">
+            <article class="transfer-card">
+              <span class="transfer-step">旧设备 · 第一步</span>
+              <h3>导出完整备份</h3>
+              <p>包含所有任务、完成记录、重复规则、DDL、删除例外和牛牛亲密度。</p>
+              <button class="transfer-button export" id="export-backup" type="button">导出数据文件</button>
+            </article>
+            <article class="transfer-card">
+              <span class="transfer-step">新设备 · 第二步</span>
+              <h3>一键导入备份</h3>
+              <p>选择旧设备导出的 JSON 文件。导入后会替换此设备当前的数据。</p>
+              <button class="transfer-button import" id="choose-backup" type="button">选择文件并导入</button>
+              <input class="sr-only" id="backup-file" type="file" accept="application/json,.json" />
+            </article>
+          </div>
+          <div class="transfer-status" id="transfer-status" role="status" aria-live="polite" hidden></div>
+          <div class="transfer-notice"><strong>提示</strong><span>备份文件只保存在你选择的位置，不会上传到服务器，也不会自动同步。</span></div>
         </section>
       </section>
     </main>

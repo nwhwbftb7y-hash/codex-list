@@ -393,10 +393,125 @@
     return [...standalone, ...representatives];
   }
 
+  function validDate(value) {
+    return value && !Number.isNaN(new Date(value).getTime());
+  }
+
+  function normalizeImportedSeries(series, index) {
+    if (!series || typeof series !== "object") throw new Error(`第 ${index + 1} 条重复任务格式不正确`);
+    const text = String(series.text || "").trim().slice(0, 100);
+    if (!text) throw new Error(`第 ${index + 1} 条重复任务缺少名称`);
+    if (!frequencies[series.frequency]) throw new Error(`第 ${index + 1} 条重复任务的周期无效`);
+    if (!validDate(series.startAt)) throw new Error(`第 ${index + 1} 条重复任务的开始日期无效`);
+    const repeatOn = normalizeRepeatOn(series.frequency, series.repeatOn, series.startAt);
+    if (series.frequency === "weekly" && (repeatOn < 0 || repeatOn > 6)) throw new Error(`第 ${index + 1} 条重复任务的星期无效`);
+    if (series.frequency === "monthly" && (repeatOn < 1 || repeatOn > 31)) throw new Error(`第 ${index + 1} 条重复任务的日期无效`);
+    const deadline = series.deadline && validDate(series.deadline) ? new Date(series.deadline).toISOString() : null;
+    const endAt = series.endAt && validDate(series.endAt)
+      ? new Date(series.endAt).toISOString()
+      : defaultSeriesEnd(series.startAt);
+    return {
+      ...series,
+      id: String(series.id || uid()),
+      modelVersion: 3,
+      text,
+      category: categories[series.category] ? series.category : "important",
+      startAt: new Date(series.startAt).toISOString(),
+      deadline,
+      hasDeadline: Boolean(deadline),
+      frequency: series.frequency,
+      repeatOn,
+      endAt,
+      createdAt: validDate(series.createdAt) ? new Date(series.createdAt).toISOString() : new Date().toISOString(),
+      exceptions: Array.isArray(series.exceptions)
+        ? series.exceptions.filter(validDate).map((value) => new Date(value).toISOString())
+        : [],
+    };
+  }
+
+  function normalizeImportedTodo(todo, index) {
+    if (!todo || typeof todo !== "object") throw new Error(`第 ${index + 1} 条任务格式不正确`);
+    if (!String(todo.text || "").trim()) throw new Error(`第 ${index + 1} 条任务缺少名称`);
+    for (const field of ["deadline", "scheduledAt", "createdAt", "completedAt", "occurrenceKey"]) {
+      if (todo[field] && !validDate(todo[field])) throw new Error(`第 ${index + 1} 条任务的日期数据无效`);
+    }
+    const normalized = normalizeTodo(todo, index);
+    return {
+      ...normalized,
+      deadline: normalized.deadline ? new Date(normalized.deadline).toISOString() : null,
+      scheduledAt: normalized.scheduledAt ? new Date(normalized.scheduledAt).toISOString() : null,
+      createdAt: new Date(normalized.createdAt).toISOString(),
+      completedAt: normalized.completedAt ? new Date(normalized.completedAt).toISOString() : null,
+      occurrenceKey: normalized.occurrenceKey ? new Date(normalized.occurrenceKey).toISOString() : null,
+    };
+  }
+
+  function exportBackup() {
+    return {
+      app: "today-todo-list",
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        todos: loadTodos(),
+        series: loadSeries(),
+      },
+      preferences: {
+        cowAffection: localStorage.getItem("today-highland-cow-v1") || "0",
+        cowPosition: localStorage.getItem("today-highland-cow-position-v1") || null,
+      },
+    };
+  }
+
+  function importBackup(backup) {
+    if (!backup || typeof backup !== "object") throw new Error("备份文件内容为空或格式不正确");
+    if (backup.app !== "today-todo-list") throw new Error("这不是本 Todo List 导出的备份文件");
+    if (backup.formatVersion !== 1) throw new Error("备份版本暂不支持，请使用新版页面导出的文件");
+    if (!backup.data || !Array.isArray(backup.data.todos) || !Array.isArray(backup.data.series)) {
+      throw new Error("备份文件缺少任务数据");
+    }
+
+    const series = backup.data.series.map(normalizeImportedSeries);
+    const seriesIds = new Set(series.map((item) => item.id));
+    if (seriesIds.size !== series.length) throw new Error("备份中存在重复的周期任务编号");
+    const todos = backup.data.todos.map(normalizeImportedTodo).map((todo) => ({
+      ...todo,
+      seriesId: todo.seriesId && seriesIds.has(todo.seriesId) ? todo.seriesId : null,
+      occurrenceKey: todo.seriesId && validDate(todo.occurrenceKey) ? new Date(todo.occurrenceKey).toISOString() : null,
+    }));
+    const todoIds = new Set(todos.map((item) => item.id));
+    if (todoIds.size !== todos.length) throw new Error("备份中存在重复的任务编号");
+
+    const oldTodos = localStorage.getItem(TODO_KEY);
+    const oldSeries = localStorage.getItem(SERIES_KEY);
+    const oldAffection = localStorage.getItem("today-highland-cow-v1");
+    const oldPosition = localStorage.getItem("today-highland-cow-position-v1");
+    try {
+      saveSeries(series);
+      saveTodos(todos);
+      if (backup.preferences && backup.preferences.cowAffection !== undefined) {
+        localStorage.setItem("today-highland-cow-v1", String(Math.max(0, Number(backup.preferences.cowAffection) || 0)));
+      }
+      if (backup.preferences && backup.preferences.cowPosition) {
+        JSON.parse(backup.preferences.cowPosition);
+        localStorage.setItem("today-highland-cow-position-v1", backup.preferences.cowPosition);
+      } else {
+        localStorage.removeItem("today-highland-cow-position-v1");
+      }
+      ensureOccurrences();
+    } catch (error) {
+      if (oldTodos === null) localStorage.removeItem(TODO_KEY); else localStorage.setItem(TODO_KEY, oldTodos);
+      if (oldSeries === null) localStorage.removeItem(SERIES_KEY); else localStorage.setItem(SERIES_KEY, oldSeries);
+      if (oldAffection === null) localStorage.removeItem("today-highland-cow-v1"); else localStorage.setItem("today-highland-cow-v1", oldAffection);
+      if (oldPosition === null) localStorage.removeItem("today-highland-cow-position-v1"); else localStorage.setItem("today-highland-cow-position-v1", oldPosition);
+      throw error;
+    }
+    return { todos: todos.length, series: series.length, exportedAt: backup.exportedAt || null };
+  }
+
   window.TodoStore = {
     categories, frequencies, loadTodos, saveTodos, loadSeries, saveSeries,
     ensureOccurrences, addTodo, addSeries, toggleTodo, deleteOccurrence,
     updateOccurrence, updateSeries, deleteSeries, collapseTodos,
-    seriesDueOn, calendarItemsForDate,
+    seriesDueOn, calendarItemsForDate, exportBackup, importBackup,
   };
 })();

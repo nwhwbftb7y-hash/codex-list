@@ -258,6 +258,20 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
 .summary-row div { display: grid; gap: 3px; }
 .summary-row strong { font-size: 13px; }
 .summary-row span, .summary-row time { color: var(--muted); font-size: 10px; }
+.transfer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 20px 0 14px; }
+.transfer-card { display: flex; flex-direction: column; align-items: flex-start; min-height: 190px; padding: 20px; border: 1px solid var(--line); border-radius: 15px; background: #faf7f2; }
+.transfer-card h3 { margin: 10px 0 7px; font-size: 17px; }
+.transfer-card p { flex: 1; margin: 0 0 18px; color: var(--muted); font-size: 12px; line-height: 1.75; }
+.transfer-step { color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.transfer-button { width: 100%; padding: 11px 14px; border: 0; border-radius: 10px; color: white; font-size: 13px; font-weight: 700; cursor: pointer; }
+.transfer-button.export { background: var(--green); }
+.transfer-button.import { background: var(--accent); }
+.transfer-button:hover { filter: brightness(.96); transform: translateY(-1px); }
+.transfer-status { margin-top: 4px; padding: 12px 14px; border: 1px solid #bdd7c5; border-radius: 10px; background: #edf7f0; color: #356546; font-size: 12px; line-height: 1.6; }
+.transfer-status[data-type="error"] { border-color: #efc0ba; background: #fff0ed; color: #a74438; }
+.transfer-status[data-type="neutral"] { border-color: var(--line); background: #f7f3ed; color: var(--muted); }
+.transfer-notice { display: flex; gap: 10px; margin-top: 14px; padding: 13px 15px; border-radius: 10px; background: #f3eee7; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.transfer-notice strong { color: var(--ink); white-space: nowrap; }
 
 .empty-state { padding: 62px 20px; text-align: center; color: var(--muted); }
 .empty-icon { width: 48px; height: 48px; display: grid; place-items: center; margin: auto; color: var(--green); border: 1px solid #b8cabf; border-radius: 50%; font-size: 20px; }
@@ -288,6 +302,7 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
   .summary-stats { grid-template-columns: 1fr; }
   .export-button { margin-left: 0; }
   .summary-row { flex-direction: column; gap: 6px; }
+  .transfer-grid { grid-template-columns: 1fr; }
   .tip { display: none; }
 }
 

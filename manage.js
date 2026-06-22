@@ -153,6 +153,50 @@ function exportSummary() {
   URL.revokeObjectURL(url);
 }
 
+function backupFilename() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  return `todo-list完整备份_${local.slice(0, 10)}_${local.slice(11, 16).replace(":", "-")}.json`;
+}
+
+function showTransferStatus(message, type = "success") {
+  const status = document.querySelector("#transfer-status");
+  status.hidden = false;
+  status.dataset.type = type;
+  status.textContent = message;
+}
+
+function exportBackupFile() {
+  const backup = TodoStore.exportBackup();
+  const content = JSON.stringify(backup, null, 2);
+  const url = URL.createObjectURL(new Blob([content], { type: "application/json;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = backupFilename();
+  link.click();
+  URL.revokeObjectURL(url);
+  showTransferStatus(`导出成功：${backup.data.todos.length} 条任务，${backup.data.series.length} 组重复日程。请把文件发送到另一台设备。`);
+}
+
+async function importBackupFile(file) {
+  if (!file) return;
+  try {
+    const backup = JSON.parse(await file.text());
+    const todoCount = Array.isArray(backup?.data?.todos) ? backup.data.todos.length : 0;
+    const seriesCountValue = Array.isArray(backup?.data?.series) ? backup.data.series.length : 0;
+    const confirmed = confirm(`即将导入 ${todoCount} 条任务和 ${seriesCountValue} 组重复日程。\n\n这会替换当前设备已有的数据，是否继续？`);
+    if (!confirmed) {
+      showTransferStatus("已取消导入，当前设备数据没有变化。", "neutral");
+      return;
+    }
+    const result = TodoStore.importBackup(backup);
+    showTransferStatus(`导入成功：已恢复 ${result.todos} 条任务和 ${result.series} 组重复日程，页面即将刷新。`);
+    setTimeout(() => location.reload(), 900);
+  } catch (error) {
+    showTransferStatus(`导入失败：${error.message || "文件无法读取"}`, "error");
+  }
+}
+
 document.querySelectorAll(".page-nav button").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".page-nav button").forEach((item) => item.classList.toggle("active", item === button));
@@ -172,6 +216,12 @@ document.querySelectorAll(".range-button").forEach((button) => {
 
 document.querySelector("#apply-range").addEventListener("click", renderSummary);
 document.querySelector("#export-summary").addEventListener("click", exportSummary);
+document.querySelector("#export-backup").addEventListener("click", exportBackupFile);
+document.querySelector("#choose-backup").addEventListener("click", () => document.querySelector("#backup-file").click());
+document.querySelector("#backup-file").addEventListener("change", (event) => {
+  importBackupFile(event.target.files?.[0]);
+  event.target.value = "";
+});
 seriesFrequency.addEventListener("change", updateSeriesRepeatFields);
 document.querySelector("#save-series").addEventListener("click", () => {
   const text = document.querySelector("#series-text").value.trim();
