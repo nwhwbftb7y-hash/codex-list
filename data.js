@@ -24,6 +24,15 @@
     catch { return fallback; }
   }
 
+  function normalizeSubtasks(subtasks) {
+    if (!Array.isArray(subtasks)) return [];
+    return subtasks.map((subtask) => ({
+      id: subtask && subtask.id ? String(subtask.id) : uid(),
+      text: String((subtask && subtask.text) || "").trim().slice(0, 100),
+      completed: Boolean(subtask && subtask.completed),
+    })).filter((subtask) => subtask.text);
+  }
+
   function normalizeTodo(todo, index) {
     const createdAt = todo.createdAt || new Date(Date.now() - index).toISOString();
     return {
@@ -34,6 +43,8 @@
       deadline: todo.deadline || null,
       scheduledAt: todo.scheduledAt || todo.deadline || null,
       createdAt,
+      order: Number.isFinite(Number(todo.order)) ? Number(todo.order) : index,
+      subtasks: normalizeSubtasks(todo.subtasks),
       completed: Boolean(todo.completed),
       completedAt: todo.completed ? (todo.completedAt || todo.deadline || createdAt) : null,
       seriesId: todo.seriesId || null,
@@ -225,6 +236,8 @@
             id: uid(), text: series.text, category: series.category,
             deadline: series.deadline || null,
             scheduledAt: key, createdAt: series.createdAt,
+            order: todos.length,
+            subtasks: series.subtasks || [],
             completed: false, seriesId: series.id, occurrenceKey: key,
           }, todos.length));
           existing.add(`${series.id}|${key}`);
@@ -242,7 +255,14 @@
 
   function addTodo(data) {
     const todos = loadTodos();
-    todos.unshift(normalizeTodo({ ...data, id: uid(), createdAt: new Date().toISOString(), completed: false }, 0));
+    const minOrder = todos.length ? Math.min(...todos.map((todo) => Number(todo.order) || 0)) : 0;
+    todos.unshift(normalizeTodo({
+      ...data,
+      id: uid(),
+      createdAt: new Date().toISOString(),
+      order: minOrder - 1,
+      completed: false,
+    }, 0));
     saveTodos(todos);
   }
 
@@ -256,6 +276,7 @@
       startAt,
       deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
       hasDeadline: Boolean(data.deadline),
+      subtasks: normalizeSubtasks(data.subtasks),
       frequency: data.frequency,
       repeatOn,
       endAt: data.endAt ? new Date(`${data.endAt}T23:59:59`).toISOString() : defaultSeriesEnd(startAt),
@@ -270,6 +291,36 @@
       ? { ...todo, completed: !todo.completed, completedAt: todo.completed ? null : new Date().toISOString() }
       : todo);
     saveTodos(todos);
+  }
+
+  function addSubtask(id, text) {
+    const value = String(text || "").trim();
+    if (!value) return;
+    saveTodos(loadTodos().map((todo) => todo.id === id
+      ? { ...todo, subtasks: [...normalizeSubtasks(todo.subtasks), { id: uid(), text: value.slice(0, 100), completed: false }] }
+      : todo));
+  }
+
+  function toggleSubtask(todoId, subtaskId) {
+    saveTodos(loadTodos().map((todo) => todo.id === todoId
+      ? {
+        ...todo,
+        subtasks: normalizeSubtasks(todo.subtasks).map((subtask) => subtask.id === subtaskId
+          ? { ...subtask, completed: !subtask.completed }
+          : subtask),
+      }
+      : todo));
+  }
+
+  function deleteSubtask(todoId, subtaskId) {
+    saveTodos(loadTodos().map((todo) => todo.id === todoId
+      ? { ...todo, subtasks: normalizeSubtasks(todo.subtasks).filter((subtask) => subtask.id !== subtaskId) }
+      : todo));
+  }
+
+  function reorderTodos(orderedIds) {
+    const positions = new Map(orderedIds.map((id, index) => [id, index]));
+    saveTodos(loadTodos().map((todo) => positions.has(todo.id) ? { ...todo, order: positions.get(todo.id) } : todo));
   }
 
   function addException(seriesId, key) {
@@ -419,6 +470,7 @@
       startAt: new Date(series.startAt).toISOString(),
       deadline,
       hasDeadline: Boolean(deadline),
+      subtasks: normalizeSubtasks(series.subtasks),
       frequency: series.frequency,
       repeatOn,
       endAt,
@@ -441,6 +493,8 @@
       deadline: normalized.deadline ? new Date(normalized.deadline).toISOString() : null,
       scheduledAt: normalized.scheduledAt ? new Date(normalized.scheduledAt).toISOString() : null,
       createdAt: new Date(normalized.createdAt).toISOString(),
+      order: Number.isFinite(Number(normalized.order)) ? Number(normalized.order) : index,
+      subtasks: normalizeSubtasks(normalized.subtasks),
       completedAt: normalized.completedAt ? new Date(normalized.completedAt).toISOString() : null,
       occurrenceKey: normalized.occurrenceKey ? new Date(normalized.occurrenceKey).toISOString() : null,
     };
@@ -513,5 +567,6 @@
     ensureOccurrences, addTodo, addSeries, toggleTodo, deleteOccurrence,
     updateOccurrence, updateSeries, deleteSeries, collapseTodos,
     seriesDueOn, calendarItemsForDate, exportBackup, importBackup,
+    addSubtask, toggleSubtask, deleteSubtask, reorderTodos,
   };
 })();

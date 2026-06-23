@@ -7,10 +7,24 @@ const customRange = document.querySelector("#custom-range");
 const rangeStart = document.querySelector("#range-start");
 const rangeEnd = document.querySelector("#range-end");
 const seriesDialog = document.querySelector("#series-dialog");
+const manageWeekLabel = document.querySelector("#manage-week-label");
 const { categories, frequencies } = TodoStore;
 let activeRange = "week";
 let editingSeriesId = null;
 let currentSummary = [];
+
+function weekOfMonth(value) {
+  const firstDay = new Date(value.getFullYear(), value.getMonth(), 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  return Math.ceil((value.getDate() + mondayOffset) / 7);
+}
+
+function renderManageWeekLabel() {
+  if (!manageWeekLabel) return;
+  const today = new Date();
+  const date = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "short" }).format(today);
+  manageWeekLabel.textContent = `${date} · W${weekOfMonth(today)}`;
+}
 
 const seriesFrequency = document.querySelector("#series-frequency");
 const seriesWeekday = document.querySelector("#series-weekday");
@@ -250,5 +264,6 @@ document.querySelector("#series-dialog .dialog-close").addEventListener("click",
 const today = new Date();
 rangeStart.value = dateInput(new Date(today.getFullYear(), today.getMonth(), 1));
 rangeEnd.value = dateInput(today);
+renderManageWeekLabel();
 renderSeries();
 renderSummary();

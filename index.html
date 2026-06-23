@@ -73,6 +73,10 @@
             <label class="repeat-end" for="repeat-end" hidden>结束于（留空默认10年后）</label>
             <input id="repeat-end" class="repeat-end" type="date" hidden />
           </div>
+          <details class="add-subtasks" open>
+            <summary>子步骤（可选，默认展开）</summary>
+            <textarea id="subtask-input" rows="3" maxlength="500" placeholder="每行写一个子步骤，例如：&#10;准备资料&#10;整理结果"></textarea>
+          </details>
         </form>
 
         <div class="toolbar"><strong>待完成</strong></div>
@@ -103,6 +107,7 @@
 
     <template id="todo-template">
       <li class="todo-item">
+        <span class="drag-handle" aria-label="拖动排序" title="拖动排序">⋮⋮</span>
         <button class="toggle" type="button" aria-label="标记为已完成">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3.2 3.2L15.5 6.8" /></svg>
         </button>
@@ -112,6 +117,14 @@
           </div>
           <time class="todo-deadline" hidden></time>
           <span class="repeat-mark" hidden></span>
+          <details class="subtasks-panel" open hidden>
+            <summary>子步骤 <b class="subtask-count">0/0</b></summary>
+            <ul class="subtask-list"></ul>
+            <form class="subtask-add">
+              <input type="text" maxlength="100" placeholder="继续添加子步骤…" />
+              <button type="submit">添加</button>
+            </form>
+          </details>
         </div>
         <button class="edit" type="button" aria-label="编辑任务">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 14.5V17h2.5L15 8.5 11.5 5 4 12.5v2ZM10.5 6l3.5 3.5" /></svg>

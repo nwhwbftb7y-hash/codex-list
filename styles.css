@@ -149,6 +149,10 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
 .deadline-field input:focus { border-color: #cdbeb2; box-shadow: 0 0 0 3px rgba(227,93,63,.07); }
 .repeat-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0 28px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .repeat-fields select, .repeat-fields input { padding: 5px 8px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: rgba(255,255,255,.72); font-size: 12px; font-weight: 400; }
+.add-subtasks { margin: 10px 0 0 28px; color: var(--muted); font-size: 12px; }
+.add-subtasks summary { width: fit-content; cursor: pointer; font-weight: 700; }
+.add-subtasks textarea { width: min(100%, 430px); margin-top: 8px; padding: 9px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; outline: 0; background: rgba(255,255,255,.72); resize: vertical; font-size: 12px; line-height: 1.6; }
+.add-subtasks textarea:focus { border-color: #cdbeb2; box-shadow: 0 0 0 3px rgba(227,93,63,.07); }
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .filters { display: flex; gap: 5px; }
@@ -162,7 +166,7 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
   --item-bg: #f7f4ef;
   --item-border: #e8e1d8;
   display: grid;
-  grid-template-columns: 28px 1fr 32px 32px;
+  grid-template-columns: 16px 28px 1fr 32px 32px;
   align-items: center;
   gap: 14px;
   min-height: 66px;
@@ -173,6 +177,9 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
   animation: enter .25s ease both;
   transition: opacity .2s, transform .2s, box-shadow .2s;
 }
+.todo-item.dragging { opacity: .45; box-shadow: 0 12px 25px rgba(65, 52, 40, .12); }
+.drag-handle { align-self: stretch; display: grid; place-items: center; color: #b9afa4; font-size: 16px; line-height: 1; cursor: grab; user-select: none; }
+.todo-item.dragging .drag-handle { cursor: grabbing; }
 .todo-item[data-category="urgent-important"] { --item-bg: #fff0ee; --item-border: #f3c9c4; }
 .todo-item[data-category="important"] { --item-bg: #fff6e8; --item-border: #f1d9b5; }
 .todo-item[data-category="low"] { --item-bg: #edf7f0; --item-border: #cbe2d2; }
@@ -194,6 +201,23 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
 .todo-deadline.overdue::before { content: "已逾期 · "; }
 .repeat-mark { padding: 2px 6px; color: #716a63; background: rgba(255,255,255,.58); border-radius: 5px; font-size: 10px; }
 .repeat-mark.period-completed { color: #49785a; background: rgba(232,247,237,.9); font-weight: 700; }
+.subtasks-panel { width: 100%; margin-top: 4px; }
+.subtasks-panel summary { width: fit-content; color: #8a8178; cursor: pointer; font-size: 11px; font-weight: 700; list-style: none; }
+.subtasks-panel summary::-webkit-details-marker { display: none; }
+.subtasks-panel summary::before { content: "▾"; display: inline-block; margin-right: 5px; transition: transform .16s ease; }
+.subtasks-panel:not([open]) summary::before { transform: rotate(-90deg); }
+.subtask-count { margin-left: 4px; color: #a49a90; font-weight: 600; }
+.subtask-list { display: grid; gap: 5px; margin: 7px 0 0; padding: 0; list-style: none; }
+.subtask-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.48); }
+.subtask-item label { display: flex; align-items: center; gap: 7px; min-width: 0; color: #5f5851; font-size: 12px; cursor: pointer; }
+.subtask-item input { width: 14px; height: 14px; accent-color: var(--green); }
+.subtask-item span { overflow-wrap: anywhere; }
+.subtask-item.completed span { color: #aaa39b; text-decoration: line-through; }
+.subtask-item button { flex: 0 0 auto; width: 22px; height: 22px; border: 0; border-radius: 7px; color: #b45a4c; background: transparent; }
+.subtask-item button:hover { background: rgba(227,93,63,.1); }
+.subtask-add { display: flex; gap: 6px; margin-top: 7px; }
+.subtask-add input { min-width: 0; flex: 1; padding: 7px 9px; border: 1px solid rgba(150,130,110,.2); border-radius: 8px; background: rgba(255,255,255,.65); font-size: 12px; outline: 0; }
+.subtask-add button { padding: 7px 10px; border: 0; border-radius: 8px; color: white; background: var(--green); font-size: 12px; }
 .completed .todo-text { color: #aaa39b; text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .completed .todo-deadline { color: #aaa39b; text-decoration: line-through; }
 .delete, .edit { display: grid; place-items: center; width: 32px; height: 32px; padding: 7px; opacity: 0; border: 0; border-radius: 8px; background: transparent; transition: .15s; }
@@ -272,6 +296,8 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
 .transfer-status[data-type="neutral"] { border-color: var(--line); background: #f7f3ed; color: var(--muted); }
 .transfer-notice { display: flex; gap: 10px; margin-top: 14px; padding: 13px 15px; border-radius: 10px; background: #f3eee7; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .transfer-notice strong { color: var(--ink); white-space: nowrap; }
+.manage-footer { display: flex; justify-content: flex-start; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.manage-footer p { margin: 0; }
 
 .empty-state { padding: 62px 20px; text-align: center; color: var(--muted); }
 .empty-icon { width: 48px; height: 48px; display: grid; place-items: center; margin: auto; color: var(--green); border: 1px solid #b8cabf; border-radius: 50%; font-size: 20px; }
@@ -294,7 +320,8 @@ h1 { margin: 0; font-size: clamp(32px, 6vw, 46px); line-height: 1.15; letter-spa
   .category-picker { margin-left: 0; }
   .deadline-field { margin-left: 0; }
   .repeat-fields { margin-left: 0; }
-  .todo-item { padding-left: 12px; }
+  .add-subtasks { margin-left: 0; }
+  .todo-item { grid-template-columns: 14px 28px 1fr 32px 32px; padding-left: 10px; gap: 10px; }
   .delete, .edit { opacity: 1; }
   .manage-hero { flex-direction: column; gap: 16px; }
   .series-card { flex-direction: column; }

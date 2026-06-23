@@ -12,6 +12,7 @@ const progressRing = document.querySelector("#progress-ring");
 const progressValue = document.querySelector("#progress-value");
 const dateLabel = document.querySelector("#date-label");
 const deadlineInput = document.querySelector("#deadline-input");
+const subtaskInput = document.querySelector("#subtask-input");
 const repeatSelect = document.querySelector("#repeat-select");
 const repeatEnd = document.querySelector("#repeat-end");
 const weeklyDay = document.querySelector("#weekly-day");
@@ -48,12 +49,22 @@ function refreshData() {
 }
 
 function compareTodos(a, b) {
+  const manual = (Number(a.order) || 0) - (Number(b.order) || 0);
+  if (manual) return manual;
   const priority = CATEGORIES[a.category].priority - CATEGORIES[b.category].priority;
   if (priority) return priority;
   if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
   if (a.deadline) return -1;
   if (b.deadline) return 1;
   return new Date(b.createdAt) - new Date(a.createdAt);
+}
+
+function parseSubtasks(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text) => ({ text, completed: false }));
 }
 
 function toLocalInput(value) {
@@ -79,10 +90,16 @@ function buildTodo(todo, target) {
   const remove = fragment.querySelector(".delete");
   const deadline = fragment.querySelector(".todo-deadline");
   const repeatMark = fragment.querySelector(".repeat-mark");
+  const subtasksPanel = fragment.querySelector(".subtasks-panel");
+  const subtaskList = fragment.querySelector(".subtask-list");
+  const subtaskCount = fragment.querySelector(".subtask-count");
+  const subtaskForm = fragment.querySelector(".subtask-add");
+  const subtaskAddInput = subtaskForm.querySelector("input");
   const series = todo.seriesId ? TodoStore.loadSeries().find((entry) => entry.id === todo.seriesId) : null;
 
   item.dataset.id = todo.id;
   item.dataset.category = todo.category;
+  item.draggable = target === list && !todo.completed;
   item.classList.toggle("completed", todo.completed);
   fragment.querySelector(".todo-text").textContent = todo.text;
 
@@ -103,6 +120,38 @@ function buildTodo(todo, target) {
     repeatMark.textContent = todo.completed ? `✓ ${repeatRule(series)}已完成` : `↻ ${repeatRule(series)}`;
     repeatMark.classList.toggle("period-completed", todo.completed);
   }
+
+  const subtasks = Array.isArray(todo.subtasks) ? todo.subtasks : [];
+  subtasksPanel.hidden = todo.completed && subtasks.length === 0;
+  subtaskCount.textContent = `${subtasks.filter((subtask) => subtask.completed).length}/${subtasks.length}`;
+  subtasks.forEach((subtask) => {
+    const row = document.createElement("li");
+    row.className = "subtask-item";
+    row.classList.toggle("completed", subtask.completed);
+    row.innerHTML = `
+      <label>
+        <input type="checkbox" />
+        <span></span>
+      </label>
+      <button type="button" aria-label="删除子步骤">×</button>`;
+    row.querySelector("input").checked = subtask.completed;
+    row.querySelector("span").textContent = subtask.text;
+    row.querySelector("input").addEventListener("change", () => {
+      TodoStore.toggleSubtask(todo.id, subtask.id);
+      refreshData();
+    });
+    row.querySelector("button").addEventListener("click", () => {
+      TodoStore.deleteSubtask(todo.id, subtask.id);
+      refreshData();
+    });
+    subtaskList.append(row);
+  });
+  subtaskForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    TodoStore.addSubtask(todo.id, subtaskAddInput.value);
+    subtaskAddInput.value = "";
+    refreshData();
+  });
 
   toggle.setAttribute("aria-label", todo.completed ? "标记为未完成" : "标记为已完成");
   toggle.addEventListener("click", () => { TodoStore.toggleTodo(todo.id); refreshData(); });
@@ -137,6 +186,35 @@ function render() {
   progressRing.style.setProperty("--progress", `${progress * 3.6}deg`);
   progressRing.setAttribute("aria-label", `完成进度 ${progress}%`);
 }
+
+function saveDraggedOrder() {
+  TodoStore.reorderTodos([...list.querySelectorAll(".todo-item")].map((item) => item.dataset.id));
+  refreshData();
+}
+
+list.addEventListener("dragstart", (event) => {
+  const item = event.target.closest(".todo-item");
+  if (!item || !item.draggable) return;
+  item.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", item.dataset.id);
+});
+
+list.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  const dragging = list.querySelector(".dragging");
+  if (!dragging) return;
+  const siblings = [...list.querySelectorAll(".todo-item:not(.dragging)")];
+  const next = siblings.find((item) => event.clientY <= item.getBoundingClientRect().top + item.offsetHeight / 2);
+  list.insertBefore(dragging, next || null);
+});
+
+list.addEventListener("dragend", (event) => {
+  const item = event.target.closest(".todo-item");
+  if (!item) return;
+  item.classList.remove("dragging");
+  saveDraggedOrder();
+});
 
 function openEditor(id, deletionOnly = false) {
   const todo = TodoStore.loadTodos().find((item) => item.id === id);
@@ -179,6 +257,7 @@ form.addEventListener("submit", (event) => {
   const text = input.value.trim();
   if (!text) return input.focus();
   const category = new FormData(form).get("category");
+  const subtasks = parseSubtasks(subtaskInput.value);
   if (repeatSelect.value !== "none") {
     if (repeatEnd.value && new Date(`${repeatEnd.value}T23:59:59`) < new Date()) {
       alert("重复结束日期不能早于今天。");
@@ -188,10 +267,10 @@ form.addEventListener("submit", (event) => {
       : repeatSelect.value === "monthly" ? Number(monthlyDay.value) : null;
     TodoStore.addSeries({
       text, category, deadline: deadlineInput.value || null,
-      frequency: repeatSelect.value, repeatOn, endAt: repeatEnd.value,
+      frequency: repeatSelect.value, repeatOn, endAt: repeatEnd.value, subtasks,
     });
   } else {
-    TodoStore.addTodo({ text, category, deadline: deadlineInput.value || null });
+    TodoStore.addTodo({ text, category, deadline: deadlineInput.value || null, subtasks });
   }
   form.reset();
   setRepeatDefaults();
@@ -202,6 +281,7 @@ form.addEventListener("submit", (event) => {
 
 clearCompleted.addEventListener("click", (event) => {
   event.preventDefault();
+  if (!confirm("确定清除所有已完成任务吗？此操作不可恢复。")) return;
   TodoStore.loadTodos().filter((todo) => todo.completed && todo.seriesId)
     .forEach((todo) => TodoStore.deleteOccurrence(todo.id, "single"));
   TodoStore.saveTodos(TodoStore.loadTodos().filter((todo) => !todo.completed));
